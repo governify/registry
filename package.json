@@ -46,9 +46,9 @@
     "@stylistic/eslint-plugin-js": "2.12.0",
     "eslint": "9.16.0",
     "globals": "15.13.0",
-    "mocha": "7.2.0",
+    "mocha": "11.0.1",
     "nodemon": "3.1.4",
-    "nyc": "15.1.0"
+    "nyc": "17.1.0"
   },
   "scripts": {
     "start": "node index.js",
