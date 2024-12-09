@@ -231,9 +231,9 @@ function _put (stateType, query, value, metadata) {
                                     logger.error("DB result = " + JSON.stringify(result, null, 2));
                                     return reject(new ErrorModel(500, "Inconsistent DB: multiple states for query " + JSON.stringify(refineQuery(stateManager.agreement.id, stateType, query), null, 2)));
                                 } else { */
-                                if(query.scope.servicio==="INT_PRV_CITASEVO_V1.0.0"){
-                                  console.log(result)
-                                }
+                if(query.scope.servicio==='INT_PRV_CITASEVO_V1.0.0'){
+                  console.log(result)
+                }
                 return resolve(result);
                 //   }
               });
@@ -275,25 +275,25 @@ function _update (stateType, query, logsState, forceUpdate) {
   logger.debug('(_update) Updating state of ' + stateType);
   return new Promise(function (resolve, reject) {
     switch (stateType) {
-      case 'agreement':
-        calculators.agreementCalculator.process(stateManager)
-          .then(function (states) {
-            // states.forEach((state)=>{
-            // 	stateManager.put(state.stateType, agreementState).then(function (data) {
-            return resolve(states);
-            //     }, function (err) {
-            //         return reject(err);
-            //     });
-            // });
-          }, function (err) {
-            logger.error(err.toString());
-            return reject(new ErrorModel(500, err));
-          });
-        break;
-      case 'guarantees':
-        const guaranteeDefinition = stateManager.agreement.terms.guarantees.find((e) => {
-          return query.guarantee === e.id;
+    case 'agreement':
+      calculators.agreementCalculator.process(stateManager)
+        .then(function (states) {
+          // states.forEach((state)=>{
+          // 	stateManager.put(state.stateType, agreementState).then(function (data) {
+          return resolve(states);
+          //     }, function (err) {
+          //         return reject(err);
+          //     });
+          // });
+        }, function (err) {
+          logger.error(err.toString());
+          return reject(new ErrorModel(500, err));
         });
+      break;
+    case 'guarantees':
+      const guaranteeDefinition = stateManager.agreement.terms.guarantees.find((e) => {
+        return query.guarantee === e.id;
+      });
         // const period = utils.time.getLastPeriod(stateManager.agreement, guaranteeDefinition.of[0].window);
         // //const reliableScope = query.period.from === '2021-09-15T22:00:00.000Z'
         // const reliableScope = query.period.from === period.from
@@ -303,133 +303,133 @@ function _update (stateType, query, logsState, forceUpdate) {
         //       const reliableGuaranteeState = response.data.guaranteeState
         //       const processGuarantees = [];
               
-        //       // console.log(reliableGuaranteeState)
-        //       // console.log(reliableGuaranteeState.length)
-        //       reliableGuaranteeState.forEach( (guaranteeState) => {
-        //         processGuarantees.push(stateManager.put(stateType, {
-        //           guarantee: query.guarantee,
-        //           period: guaranteeState.period,
-        //           scope: guaranteeState.scope
-        //         }, guaranteeState.value, {
-        //           //   "logsState": logsState,
-        //           metrics: guaranteeState.metrics,
-        //           evidences: guaranteeState.evidences
-        //           //  penalties: guaranteeState.penalties ? guaranteeState.penalties : null
-        //         }));
-        //       });
-        //       logger.debug('Created parameters array for saving states of guarantee of length ' + processGuarantees.length);
-        //       logger.debug('Persisting guarantee states...');
-        //       Promise.all(processGuarantees).then(function (guarantees) {
-        //         logger.debug('All guarantee states have been persisted');
-        //         const result = [];
-        //         for (const a in guarantees) {
+      //       // console.log(reliableGuaranteeState)
+      //       // console.log(reliableGuaranteeState.length)
+      //       reliableGuaranteeState.forEach( (guaranteeState) => {
+      //         processGuarantees.push(stateManager.put(stateType, {
+      //           guarantee: query.guarantee,
+      //           period: guaranteeState.period,
+      //           scope: guaranteeState.scope
+      //         }, guaranteeState.value, {
+      //           //   "logsState": logsState,
+      //           metrics: guaranteeState.metrics,
+      //           evidences: guaranteeState.evidences
+      //           //  penalties: guaranteeState.penalties ? guaranteeState.penalties : null
+      //         }));
+      //       });
+      //       logger.debug('Created parameters array for saving states of guarantee of length ' + processGuarantees.length);
+      //       logger.debug('Persisting guarantee states...');
+      //       Promise.all(processGuarantees).then(function (guarantees) {
+      //         logger.debug('All guarantee states have been persisted');
+      //         const result = [];
+      //         for (const a in guarantees) {
 
-        //           // console.log(guarantees[a][0].records)
-        //           result.push(guarantees[a][0]);
-        //         }
-        //         return resolve(result);
-        //       });
-        //     }).catch(() => {
-        //       logger.error('Error getting reliable guarantees states')
-        //     })
-        //   }catch{
-        //     logger.error(err);
-        //     const errorString = 'Error processing guarantees';
-        //     return promiseErrorHandler(reject, 'state-manager', '_update', 500, errorString, err);
-        //   }
-        // }else{
-          calculators.guaranteeCalculator.process(stateManager, query, forceUpdate)
-          .then(function (guaranteeStates) {
-            // console.log(1)
-            // console.log(guaranteeStates.guaranteeValues.length)
-            logger.debug('Guarantee states for ' + guaranteeStates.guaranteeId + ' have been calculated (' + guaranteeStates.guaranteeValues.length + ') ');
-            logger.debug('Guarantee states: ' + JSON.stringify(guaranteeStates, null, 2));
-            const processGuarantees = [];
-            guaranteeStates.guaranteeValues.forEach(function (guaranteeState) {
-              logger.debug('Guarantee state: ' + JSON.stringify(guaranteeState, null, 2));
-              processGuarantees.push(stateManager.put(stateType, {
-                guarantee: query.guarantee,
-                period: guaranteeState.period,
-                scope: guaranteeState.scope
-              }, guaranteeState.value, {
+      //           // console.log(guarantees[a][0].records)
+      //           result.push(guarantees[a][0]);
+      //         }
+      //         return resolve(result);
+      //       });
+      //     }).catch(() => {
+      //       logger.error('Error getting reliable guarantees states')
+      //     })
+      //   }catch{
+      //     logger.error(err);
+      //     const errorString = 'Error processing guarantees';
+      //     return promiseErrorHandler(reject, 'state-manager', '_update', 500, errorString, err);
+      //   }
+      // }else{
+      calculators.guaranteeCalculator.process(stateManager, query, forceUpdate)
+        .then(function (guaranteeStates) {
+          // console.log(1)
+          // console.log(guaranteeStates.guaranteeValues.length)
+          logger.debug('Guarantee states for ' + guaranteeStates.guaranteeId + ' have been calculated (' + guaranteeStates.guaranteeValues.length + ') ');
+          logger.debug('Guarantee states: ' + JSON.stringify(guaranteeStates, null, 2));
+          const processGuarantees = [];
+          guaranteeStates.guaranteeValues.forEach(function (guaranteeState) {
+            logger.debug('Guarantee state: ' + JSON.stringify(guaranteeState, null, 2));
+            processGuarantees.push(stateManager.put(stateType, {
+              guarantee: query.guarantee,
+              period: guaranteeState.period,
+              scope: guaranteeState.scope
+            }, guaranteeState.value, {
+              //   "logsState": logsState,
+              metrics: guaranteeState.metrics,
+              evidences: guaranteeState.evidences
+              //  penalties: guaranteeState.penalties ? guaranteeState.penalties : null
+            }));
+          });
+          logger.debug('Created parameters array for saving states of guarantee of length ' + processGuarantees.length);
+          logger.debug('Persisting guarantee states...');
+          Promise.all(processGuarantees).then(function (guarantees) {
+            logger.debug('All guarantee states have been persisted');
+            const result = [];
+            for (const a in guarantees) {
+              result.push(guarantees[a][0]);
+            }
+            return resolve(result);
+          });
+        }).catch(function (err) {
+          logger.error(err);
+          const errorString = 'Error processing guarantees';
+          return promiseErrorHandler(reject, 'state-manager', '_update', 500, errorString, err);
+        });
+      // }
+      break;
+    case 'metrics':
+      calculators.metricCalculator.process(stateManager.agreement, query.metric, query)
+        .then(function (metricStates) {
+          logger.debug('Metric states for ' + metricStates.metricId + ' have been calculated (' + metricStates.metricValues.length + ') ');
+          const processMetrics = [];
+          metricStates.metricValues.forEach(function (metricValue) {
+            processMetrics.push(
+              stateManager.put(stateType, {
+                metric: query.metric,
+                scope: metricValue.scope,
+                period: metricValue.period,
+                window: query.window
+              }, metricValue.value, {
                 //   "logsState": logsState,
-                metrics: guaranteeState.metrics,
-                evidences: guaranteeState.evidences
-                //  penalties: guaranteeState.penalties ? guaranteeState.penalties : null
+                evidences: metricValue.evidences,
+                parameters: metricValue.parameters
               }));
-            });
-            logger.debug('Created parameters array for saving states of guarantee of length ' + processGuarantees.length);
-            logger.debug('Persisting guarantee states...');
-            Promise.all(processGuarantees).then(function (guarantees) {
-              logger.debug('All guarantee states have been persisted');
-              const result = [];
-              for (const a in guarantees) {
-                result.push(guarantees[a][0]);
-              }
-              return resolve(result);
-            });
-          }).catch(function (err) {
-            logger.error(err);
-            const errorString = 'Error processing guarantees';
-            return promiseErrorHandler(reject, 'state-manager', '_update', 500, errorString, err);
           });
-        // }
-        break;
-      case 'metrics':
-        calculators.metricCalculator.process(stateManager.agreement, query.metric, query)
-          .then(function (metricStates) {
-            logger.debug('Metric states for ' + metricStates.metricId + ' have been calculated (' + metricStates.metricValues.length + ') ');
-            const processMetrics = [];
-            metricStates.metricValues.forEach(function (metricValue) {
-              processMetrics.push(
-                stateManager.put(stateType, {
-                  metric: query.metric,
-                  scope: metricValue.scope,
-                  period: metricValue.period,
-                  window: query.window
-                }, metricValue.value, {
-                  //   "logsState": logsState,
-                  evidences: metricValue.evidences,
-                  parameters: metricValue.parameters
-                }));
-            });
-            logger.debug('Created parameters array for saving states of metric of length ' + processMetrics.length);
-            logger.debug('Persisting metric states...');
-            return Promise.all(processMetrics).then(function (metrics) {
-              logger.debug('All metric states have been persisted');
-              const result = [];
-              for (const a in metrics) {
-                result.push(metrics[a][0]);
-              }
-              return resolve(result);
-            });
-          }).catch(function (err) {
-            const errorString = 'Error processing metrics';
-            return promiseErrorHandler(reject, 'state-manager', '_update', 500, errorString, err);
+          logger.debug('Created parameters array for saving states of metric of length ' + processMetrics.length);
+          logger.debug('Persisting metric states...');
+          return Promise.all(processMetrics).then(function (metrics) {
+            logger.debug('All metric states have been persisted');
+            const result = [];
+            for (const a in metrics) {
+              result.push(metrics[a][0]);
+            }
+            return resolve(result);
           });
-        break;
-      case 'pricing':
-        calculators.pricingCalculator.process(stateManager.agreement, query, stateManager).then(function (pricingStates) {
-          logger.debug('All pricing states (' + pricingStates.length + ') have been calculated ');
-          return resolve(pricingStates);
-        }, function (err) {
-          logger.error(err.toString());
-          return reject(new ErrorModel(500, err));
+        }).catch(function (err) {
+          const errorString = 'Error processing metrics';
+          return promiseErrorHandler(reject, 'state-manager', '_update', 500, errorString, err);
         });
-        break;
+      break;
+    case 'pricing':
+      calculators.pricingCalculator.process(stateManager.agreement, query, stateManager).then(function (pricingStates) {
+        logger.debug('All pricing states (' + pricingStates.length + ') have been calculated ');
+        return resolve(pricingStates);
+      }, function (err) {
+        logger.error(err.toString());
+        return reject(new ErrorModel(500, err));
+      });
+      break;
 
-      case 'quotas':
-        calculators.quotasCalculator.process(stateManager, query).then(function (quotasStates) {
-          logger.debug('All quotas states (' + quotasStates.length + ') has been calculated ');
-          // putting quotas
-          return resolve(quotasStates);
-        }, function (err) {
-          logger.error(err.toString());
-          return reject(new ErrorModel(500, err));
-        });
-        break;
-      default:
-        return reject(new ErrorModel(500, 'There are not method implemented to calculate ' + stateType + ' state'));
+    case 'quotas':
+      calculators.quotasCalculator.process(stateManager, query).then(function (quotasStates) {
+        logger.debug('All quotas states (' + quotasStates.length + ') has been calculated ');
+        // putting quotas
+        return resolve(quotasStates);
+      }, function (err) {
+        logger.error(err.toString());
+        return reject(new ErrorModel(500, err));
+      });
+      break;
+    default:
+      return reject(new ErrorModel(500, 'There are not method implemented to calculate ' + stateType + ' state'));
     }
   });
 }
@@ -602,12 +602,12 @@ function refineQuery (agreementId, stateType, query) {
   }
 
   switch (stateType) {
-    case 'metrics':
-      refinedQuery.id = query.metric;
-      break;
-    case 'guarantees':
-      refinedQuery.id = query.guarantee;
-      break;
+  case 'metrics':
+    refinedQuery.id = query.metric;
+    break;
+  case 'guarantees':
+    refinedQuery.id = query.guarantee;
+    break;
   }
   return refinedQuery;
 }

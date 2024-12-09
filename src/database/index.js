@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 'use strict';
 const governify = require('governify-commons');
-  const config = governify.configurator.getConfig('main');
+const config = governify.configurator.getConfig('main');
 const logger = governify.getLogger().tag('db-manager');
 
 const jsyaml = require('js-yaml');
@@ -80,7 +80,7 @@ function _connect (callback) {
         setupModel(instance, config.models.overrides.name, config.models.overrides.path);
         setupModel(instance, config.models.bills.name, config.models.bills.path);
       } catch (error) {
-        throw new Error("Error setting the /models files with /configuration files: "+error)
+        throw new Error('Error setting the /models files with /configuration files: '+error)
       }
     }
     if (callback) {
