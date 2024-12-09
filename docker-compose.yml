@@ -1,0 +1,36 @@
+services:
+  mongodb:
+    restart: unless-stopped
+    image: mongo:latest
+    container_name: mongodb-registry
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGOADMIN}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGOPASS}
+    networks:
+      - registry-network
+    ports:
+      - "5001:5001"
+    volumes:
+      - registry-data:/data/db
+
+  registry:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: registry
+    environment:
+      - PORT=5400
+    depends_on:
+      - mongodb
+    networks:
+      - registry-network
+    ports:
+      - "5400:5400"
+
+volumes:
+  registry-data:
+
+networks:
+  registry-network:
+    driver: bridge

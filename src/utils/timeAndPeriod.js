@@ -109,11 +109,11 @@ var periods = {
  * */
 function _convertPeriod (billingCycle) {
   switch (billingCycle) {
-    case 'yearly':
-      return 'years';
-    case 'monthly':
-      return 'months';
-    case 'daily':
-      return 'days';
+  case 'yearly':
+    return 'years';
+  case 'monthly':
+    return 'months';
+  case 'daily':
+    return 'days';
   }
 }

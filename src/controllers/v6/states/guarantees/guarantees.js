@@ -249,9 +249,9 @@ async function _guaranteeIdGET(req, res) {
     const StateModel = db.models.StateModel;
     try {
       let aggregateArray = [{ $match: { agreementId: agreementId, id: guaranteeId } },
-      { $addFields: { record: { $last: "$records" } } },
-      { $addFields: { record_size: { $size: "$record.evidences" } } },
-      { $project: { records: 0 } }
+        { $addFields: { record: { $last: '$records' } } },
+        { $addFields: { record_size: { $size: '$record.evidences' } } },
+        { $project: { records: 0 } }
       ];
       withNoEvidences === 'false' && aggregateArray.push({ $match: { record_size: { $gte: 1 } } })
       evidences === 'false' && aggregateArray.push({ $project: { record: { evidences: 0 } } })

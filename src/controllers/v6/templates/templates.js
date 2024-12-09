@@ -71,17 +71,17 @@ function _templatesPOST (args, res) {
       const template = new db.models.TemplateModel(schema);
       //check if the id follows a pattern
       const idPattern = /^(.*)-v(\d+)\-(\d+)\-(\d+)(-clone)?$/;
-      const exampleId = "my-string-example-v0-002-012";
+      const exampleId = 'my-string-example-v0-002-012';
       const requestId = schema.id
       if(!idPattern.test(requestId)){
-        return res.status(400).json({"error": "Bad formed id","required pattern":` ${idPattern.toString()}`,"your id":`${requestId}`,"example":`${exampleId}` })
+        return res.status(400).json({'error': 'Bad formed id','required pattern':` ${idPattern.toString()}`,'your id':`${requestId}`,'example':`${exampleId}` })
       }
       //check type = "template"
-      if(!(schema.type=="template")) return res.status(400).json(new ErrorModel(400, "Template must have: 'type':'template'"));
+      if(!(schema.type=='template')) return res.status(400).json(new ErrorModel(400, "Template must have: 'type':'template'"));
       template.save(function (err,data) {
         if (err) {
-            logger.error('Mongo error saving template template: ' + err.toString());
-            res.status(500).json(new ErrorModel(500, {data: err, text: err.toString()}));
+          logger.error('Mongo error saving template template: ' + err.toString());
+          res.status(500).json(new ErrorModel(500, {data: err, text: err.toString()}));
 
         } else {
           logger.info('New template template saved successfully!');
@@ -129,7 +129,7 @@ async function _templatesGET (req, res) {
   const TemplateModel = db.models.TemplateModel;
   let regExp = /.*/
   if(req.query.id) {
-    logger.info("search by id",req.query.id)
+    logger.info('search by id',req.query.id)
     regExp =  new RegExp(req.query.id.replace(/\*/g, '.*'))
   }
   TemplateModel.find({

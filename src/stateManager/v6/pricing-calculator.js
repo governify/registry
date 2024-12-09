@@ -203,17 +203,17 @@ function processPricing (agreementDef, query, manager) {
                 if (guaranteeState.penalties) {
                   // Calculate aggregated values of penalty
                   switch (penalty.aggregatedBy) {
-                    case 'sum':
-                      logger.info('SUM ' + guaranteeState.penalties[penaltyId] + ' penalty to classifier');
-                      classifier.value += guaranteeState.penalties[penaltyId];
-                      break;
-                    case 'prod':
-                      logger.info('PROD ' + guaranteeState.penalties[penaltyId] + ' penalty to classifier');
-                      classifier.value *= guaranteeState.penalties[penaltyId];
-                      break;
-                    default:
-                      logger.info('(DEFAULT) SUM ' + guaranteeState.penalties[penaltyId] + ' penalty to classifier');
-                      classifier.value += guaranteeState.penalties[penaltyId];
+                  case 'sum':
+                    logger.info('SUM ' + guaranteeState.penalties[penaltyId] + ' penalty to classifier');
+                    classifier.value += guaranteeState.penalties[penaltyId];
+                    break;
+                  case 'prod':
+                    logger.info('PROD ' + guaranteeState.penalties[penaltyId] + ' penalty to classifier');
+                    classifier.value *= guaranteeState.penalties[penaltyId];
+                    break;
+                  default:
+                    logger.info('(DEFAULT) SUM ' + guaranteeState.penalties[penaltyId] + ' penalty to classifier');
+                    classifier.value += guaranteeState.penalties[penaltyId];
                   }
                 }
                 // Control Saturation (maximum value) with UpTo in the definition
