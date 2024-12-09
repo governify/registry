@@ -32,6 +32,7 @@ const jsyaml = require('js-yaml');
 const fs = require('fs');
 const mongoose = require('mongoose');
 const $RefParser = require('json-schema-ref-parser');
+const memoryDB = require('./MemoryServer');
 
 /**
  * Database module.
@@ -54,43 +55,56 @@ module.exports = {
  * @param {callback} callback callback connect function
  * @alias module:database.connect
  * */
-function _connect (callback) {
+function _connect(callback) {
   const instance = this;
-  let db = null;
-  const options = {
-    keepAlive: true,
-    reconnectTries: Number.MAX_VALUE, // Never stop trying to reconnect
-    reconnectInterval: 3000,
-    useCreateIndex: true
-  };
-  const databaseFullURL = governify.infrastructure.getServiceURL('internal.database.mongo-registry') + '/' + config.database.name;
+  let databaseFullURL;
+  if(process.env.NODE_ENV === 'production') {
+    databaseFullURL = governify.infrastructure.getServiceURL('internal.database.mongo-registry') + '/' + config.database.name;
+  } else if (process.env.NODE_ENV === 'ci'){
+    logger.info('Using in-memory database for CI environment');
+    memoryDB.connect();
+    logger.info('In-memory MongoDB connected');
+    if (callback) callback();
+    return;
+  } else {
+    databaseFullURL = 'mongodb://' + process.env.MONGOADMIN + ':'+ process.env.MONGOPASS + '@' + config.database.host + ':' + config.database.port + '/' + config.database.name + '?authSource=admin';
+  }
   logger.info('Connecting to ' + databaseFullURL);
-  mongoose.Promise = global.Promise;
-  mongoose.connect(databaseFullURL, options).then(() => {
-    db = mongoose.connection;
 
-    logger.info('Connected to db!');
-    instance.db = db;
-    if (!instance.models) {
-      instance.models = {};
-      try {
-        setupModel(instance, config.models.template.name, config.models.template.path,config.models.template.indexableParams);
-        setupModel(instance, config.models.agreement.name, config.models.agreement.path);
-        setupModel(instance, config.models.state.name, config.models.state.path);
-        setupModel(instance, config.models.overrides.name, config.models.overrides.path);
-        setupModel(instance, config.models.bills.name, config.models.bills.path);
-      } catch (error) {
-        throw new Error('Error setting the /models files with /configuration files: '+error)
+  mongoose.Promise = global.Promise;
+  mongoose.connect(databaseFullURL)
+    .then(() => {
+      const db = mongoose.connection;
+      logger.info('Connected to db!');
+      instance.db = db;
+
+      if (!instance.models) {
+        instance.models = {};
+        try {
+          setupModel(instance, config.models.template.name, config.models.template.path, config.models.template.indexableParams);
+          setupModel(instance, config.models.agreement.name, config.models.agreement.path);
+          setupModel(instance, config.models.state.name, config.models.state.path);
+          setupModel(instance, config.models.overrides.name, config.models.overrides.path);
+          setupModel(instance, config.models.bills.name, config.models.bills.path);
+        } catch (error) {
+          logger.error('Error setting the /models files with /configuration files:', error);
+          if (callback) {
+            callback(error);
+          }
+          return;
+        }
       }
-    }
-    if (callback) {
-      callback();
-    }
-  }).catch(err => {
-    if (callback) {
-      callback(err);
-    }
-  });
+
+      if (callback) {
+        callback();
+      }
+    })
+    .catch(err => {
+      logger.error('Database connection error:', err);
+      if (callback) {
+        callback(err);
+      }
+    });
 }
 
 /**
@@ -115,7 +129,7 @@ function _close (done) {
  * @param {String} jsonModelUri model URI
  * */
 function setupModel (instance, modelName, jsonModelUri,indexableParams) {
-  const referencedJsonModel = jsyaml.safeLoad(fs.readFileSync(jsonModelUri));
+  const referencedJsonModel = jsyaml.load(fs.readFileSync(jsonModelUri));
   $RefParser.dereference(referencedJsonModel, function (err, dereferencedJsonModel) {
     if (err) {
       logger.info('dereference error in setupModel: ' + err);

@@ -40,10 +40,10 @@ jobs:
       run: npm install
 
     - name: Start the server 🚀
-      run: npm start &
+      run: npm run ci &
       
-    # - name: Check server is running 🏃
-    #   run: curl -f http://localhost:5800/docs || exit 1
+    - name: Check server is running 🏃
+      run: curl -f http://localhost:5400 || exit 1
   
   test:
     name: Lint, test and coverage to coveralls 🧪
