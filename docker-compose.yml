@@ -9,7 +9,7 @@ services:
     networks:
       - registry-network
     ports:
-      - "5001:5001"
+      - "5001:27017"
     volumes:
       - registry-data:/data/db
 
