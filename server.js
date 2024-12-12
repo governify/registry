@@ -24,16 +24,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * Registry module.
  * @module registry
  * @requires express
- * @requires http
- * @requires body-parser
  * @requires config
  * @requires database
  * @requires swagger
  * @requires middlewares
  * */
 module.exports = {
-  deploy: _deploy,
-  undeploy: _undeploy
+  deploy: _deploy
 };
 
 /**
@@ -42,16 +39,13 @@ module.exports = {
  * @param {function} callback callback function
  * @alias module:registry.deploy
  * */
-function _deploy (configurations, expressMiddlewares, callback) {
+function _deploy(configurations, expressMiddlewares, callback) {
   const governify = require('governify-commons');
   const config = governify.configurator.getConfig('main');
 
-  // Add this to the VERY top of the first file loaded in your app
+  // Elastic APM initialization can remain if telemetry is used
+  //eslint-disable-next-line no-unused-vars
   const apm = require('elastic-apm-node').start({
-    // Override service name from package.json
-    // Allowed characters: a-z, A-Z, 0-9, -, _, and space
-    // Override service name from package.json
-    // Allowed characters: a-z, A-Z, 0-9, -, _, and space
     serviceName: 'Registry',
     serviceNodeName: 'Registry',
     captureBody: 'all',
@@ -59,167 +53,154 @@ function _deploy (configurations, expressMiddlewares, callback) {
     usePathAsTransactionName: true,
     abortedErrorThreshold: 0,
     distributedTracingOrigins: ['*'],
-    active: config.telemetry.enabled
-
+    active: config.telemetry.enabled,
   });
 
-  const http = require('http'); // Use http if your app will be behind a proxy.
-  const https = require('https'); // Use https if your app will not be behind a proxy.
-  const bodyParser = require('body-parser');
   const express = require('express');
-  const cors = require('cors');
   const helmet = require('helmet');
   const compression = require('compression');
   const fs = require('fs');
   const path = require('path');
+  const swaggerUi = require('swagger-ui-express');
 
-  // Self dependencies
   const logger = governify.getLogger().tag('deploy');
   const db = require('./src/database');
-  const swaggerUtils = require('./src/utils').swagger;
   const middlewares = require('./src/utils').middlewares;
 
-  const server = null;
   const app = express();
-
   const frontendPath = path.join(__dirname, '/public');
   const serverPort = process.env.PORT || config.server.port;
-  const CURRENT_API_VERSION = 'v6';
+  const CURRENT_API_VERSION = config.server.apiVersion;
+  const swaggerUtils = require('./src/utils').swagger;
 
+  // Serve static files
   app.use(express.static(frontendPath));
 
-  // Default server options
+  // Middleware setup
   app.use(compression());
+  
+  // Use built-in Express JSON parsing with more modern options
+  app.use(express.json({ 
+    limit: config.server.bodySize,
+    strict: true // Ensures only objects and arrays are parsed
+  }));
+  app.use(express.urlencoded({ 
+    limit: config.server.bodySize, 
+    extended: true 
+  }));
 
-  logger.info("Using '" + config.server.bodySize + "' as HTTP body size");
-  app.use(
-    bodyParser.urlencoded({
-      limit: config.server.bodySize,
-      extended: 'true'
-    })
-  );
-
-  app.use(
-    bodyParser.json({
-      limit: config.server.bodySize,
-      type: 'application/json'
-    })
-  );
-
-  // Configurable server options
-
+  // Simplified CORS handling
   if (config.server.bypassCORS) {
-    logger.info("Adding 'Access-Control-Allow-Origin: *' header to every path.");
+    const cors = require('cors');
+    logger.info('Adding CORS middleware.');
     app.use(cors());
   }
 
-  if (config.server.useHelmet) {
-    logger.info('Adding Helmet related headers.');
-    app.use(helmet());
-  }
-
+  // HTTP OPTIONS handling can be simplified
   if (config.server.httpOptionsOK) {
-    app.options('/*', function (req, res) {
-      logger.info('Bypassing 405 status put by swagger when no request handler is defined');
-      return res.sendStatus(200);
+    app.options('/*', (req, res) => {
+      logger.info('Bypassing 405 status for undefined request handlers');
+      res.sendStatus(200);
     });
   }
 
+  // Package info endpoint
   if (config.server.servePackageInfo) {
-    app.use('/api/info', function (req, res) {
-      logger.debug("Serving package.json at '%s'", '/api/info');
+    app.get('/api/info', (req, res) => {
+      logger.debug("Serving package.json at '/api/info'");
       res.json(require('./package.json'));
     });
   }
 
-  // middleware to control when an agreement state process is already in progress
-
   app.use('/api/v6/states/:agreement', middlewares.stateInProgress);
 
-  // latest documentation redirection
-  app.use('/api/latest/docs', function (req, res) {
-    res.redirect('/api/' + CURRENT_API_VERSION + '/docs');
-  });
-  app.use('/api/latest/api-docs', function (req, res) {
-    res.redirect('/api/' + CURRENT_API_VERSION + '/api-docs');
+  // Redirects
+  app.get('/api/latest/docs', (req, res) => {
+    res.redirect(`/api/v${CURRENT_API_VERSION}/docs`);
   });
 
-  const v8 = require('v8');
-  app.get('/heapStats', function (req, res) {
-    var heapStats = v8.getHeapStatistics();
-
-    // Round stats to MB
-    var roundedHeapStats = Object.getOwnPropertyNames(heapStats).reduce(function (map, stat) {
-      map[stat] = Math.round((heapStats[stat] / 1024 / 1024) * 1000) / 1000;
-      return map;
-    }, {});
-    roundedHeapStats['units'] = 'MB';
-
-    res.send(roundedHeapStats);
+  app.get('/api/latest/api-docs', (req, res) => {
+    res.data = {
+      info: {
+        apiversion: CURRENT_API_VERSION
+      }
+    };
+    res.redirect(`/api/v${CURRENT_API_VERSION}/api-docs`);
   });
 
+  // Heap stats can use newer V8 methods
+  app.get('/heapStats', (req, res) => {
+    const v8 = require('v8');
+    const heapStats = v8.getHeapStatistics();
+    const roundedHeapStats = Object.fromEntries(
+      Object.entries(heapStats).map(([key, value]) => [
+        key, Math.round((value / 1024 / 1024) * 1000) / 1000
+      ])
+    );
+    roundedHeapStats.units = 'MB';
+    res.json(roundedHeapStats);
+  });
+
+  // Apply additional middlewares
   for (const middleware of expressMiddlewares) {
     if (middleware) app.use(middleware);
   }
+
   logger.info('Trying to deploy server');
+
+  // Configuration handling
   if (configurations) {
     logger.info('Reading configuration...');
-    for (const c in configurations) {
-      const prop = configurations[c];
-      logger.info('Setting property' + c + ' with value ' + prop);
-      config.setProperty(c, prop);
-    }
-  }
-
-  db.connect(function (err) {
-    logger.info('Initializing app after db connection');
-    if (!err) {
-      // list of swagger documents, one for each version of the api.
-      const swaggerDocs = [
-        swaggerUtils.getSwaggerDoc(6)
-      ];
-      // initialize swagger middleware for each swagger documents.
-      swaggerUtils.initializeMiddleware(app, swaggerDocs, function () {
-        if (process.env.HTTPS_SERVER === 'true' || config.server.listenOnHttps) {
-          https.createServer({
-            key: fs.readFileSync('certs/privkey.pem'),
-            cert: fs.readFileSync('certs/cert.pem')
-          }, app).listen(serverPort, function () {
-            logger.info('HTTPS_SERVER mode');
-            logger.info('Your server is listening on port ' + serverPort + '(https://localhost:' + serverPort + ')');
-            logger.info('Swagger-ui is available on https://localhost:' + serverPort + '/api/' + CURRENT_API_VERSION + '/docs');
-          });
-        } else {
-          http.createServer(app).listen(serverPort, '0.0.0.0', function () {
-            logger.info('Your server is listening on port ' + serverPort + '(http://localhost:' + serverPort + ')');
-            logger.info('Swagger-ui is available on http://localhost:' + serverPort + '/api/' + CURRENT_API_VERSION + '/docs');
-            if (callback) {
-              callback(server);
-            }
-          });
-        }
-      });
-    } else {
-      logger.error('Database connection failed', err);
-      _undeploy(process.exit(0));
-    }
-  });
-}
-
-/**
- * _undeploy.
- * @param {function} callback callback function
- * @alias module:registry.undeploy
- * */
-function _undeploy (callback) {
-  if (db) {
-    db.close(function () {
-      server.close(function () {
-        logger.info('Server has been closed');
-        callback();
-      });
+    Object.entries(configurations).forEach(([key, value]) => {
+      logger.info(`Setting property ${key} with value ${value}`);
+      config.setProperty(key, value);
     });
-  } else {
-    callback();
   }
+
+  // Database connection and server setup
+  db.connect((err) => {
+    if (err) {
+      logger.error('Database connection failed', err);
+      process.exit(1);
+      return;
+    }
+  
+    logger.info('Initializing app after db connection');
+  
+    // Serve Swagger UI
+    const swaggerDocument =  swaggerUtils.getSwaggerDoc(CURRENT_API_VERSION);
+
+    // Serve Swagger UI with explicit configuration
+    app.use(`/api/v${CURRENT_API_VERSION}/docs`, 
+      swaggerUi.serve, 
+      swaggerUi.setup(swaggerDocument)
+    );
+
+    app.use(`/api/v${CURRENT_API_VERSION}/api-docs`, (req, res) => {
+      res.json(swaggerDocument);
+    });
+
+    if (config.server.useHelmet) {
+      logger.info('Adding Helmet related headers.');
+      app.use(helmet());
+    }
+  
+    const serverOptions = {
+      port: serverPort,
+      host: '0.0.0.0'
+    };
+
+    const createServer = process.env.HTTPS_SERVER === 'true' || config.server.listenOnHttps
+      ? require('https').createServer.bind(null, {
+        key: fs.readFileSync('certs/privkey.pem'),
+        cert: fs.readFileSync('certs/cert.pem'),
+      }, app)
+      : require('http').createServer.bind(null, app);
+
+    const server = createServer().listen(serverOptions, () => {
+      logger.info(`Server listening on port ${serverPort} (${config.server.listenOnHttps ? 'https' : 'http'}://localhost:${serverPort})`);
+      logger.info('Swagger UI and API docs served in /api/v6/docs and /api/v6/api-docs');
+      if (callback) callback(server);
+    });
+  });  
 }
