@@ -27,7 +27,6 @@
  
 const fs = require('fs');
 const jsyaml = require('js-yaml');
-const swaggerUi = require('swagger-ui-express');
  
 /**
   * Swagger module.
@@ -40,7 +39,6 @@ const swaggerUi = require('swagger-ui-express');
 module.exports = {
   getRouterOption: _getRouterOption,
   getSwaggerDoc: _getSwaggerDoc,
-  initializeMiddleware: _initializeMiddleware
 };
  
 /**
@@ -65,25 +63,5 @@ function _getRouterOption(version) {
 function _getSwaggerDoc(version) {
   const spec = fs.readFileSync('./src/api/swaggerV' + version + '.yaml', 'utf8');
   return jsyaml.load(spec);
-}
- 
-/**
-  * Adds Swagger UI middleware for serving API documentation.
-  * @param {Express} app The Express app to append middlewares to
-  * @param {Array} swaggerDocs Array of Swagger documents
-  * @param {Function} [callback] Optional callback function
-  * @return {Express} app for chaining
-  * @alias module:swagger.initializeMiddleware
-  */
-function _initializeMiddleware(app, swaggerDocs, callback) {
-  swaggerDocs.forEach(swaggerDoc => {
-    const apiPath = process.env.API_PREFIX || '';
-    app.use(apiPath + '/docs', swaggerUi.serve, swaggerUi.setup(swaggerDoc));
-  });
- 
-  if (callback) {
-    callback(app);
-  }
-  return app;
 }
  

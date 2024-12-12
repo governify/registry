@@ -1,48 +1,825 @@
 openapi: 3.0.0
 info:
-  title: Sample API
-  description: A sample API to illustrate OpenAPI concepts
-  version: 1.0.0
+  title: Governify Registry
+  description: Governify Registry API
+  version: '7'
+  termsOfService: www.isa.us.es
+  contact:
+    name: ISA Research Group
+    url: www.isa.us.es
+    email: isagroup.us@gmail.com
+  license:
+    name: MIT
+    url: 'http://opensource.org/licenses/MIT'
+
 servers:
-  - url: http://api.example.com/v1
-    description: Main (production) server
+  - url: /api/v7
+    description: Development server
+  - url: https://registry.governify.io/api/v6
+    description: Production server
+
+tags:
+  - name: template-registry
+    description: Template registry operations
+  - name: agreement-registry
+    description: Agreement registry operations
+  - name: state-registry
+    description: State registry operations
+  - name: bills
+    description: Bills operations
+  - name: accountable-registry
+    description: Accountable registry operations
+
 paths:
-  /items:
+  /templates:
     get:
-      summary: List all items
+      tags:
+        - template-registry
+      summary: Get all templates
+      operationId: templatesGET
       responses:
         '200':
-          description: A list of items
+          description: Successful response
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                    name:
-                      type: string
+                  $ref: '#/components/schemas/Template'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+    
     post:
-      summary: Create a new item
+      tags:
+        - template-registry
+      summary: Create a new template
+      operationId: templatesPOST
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                name:
-                  type: string
+              $ref: '#/components/schemas/Template'
       responses:
-        '201':
-          description: Item created
+        '200':
+          description: Template created successfully
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+  
+  /templates/regexp:
+    post:
+      tags:
+        - template-registry
+      summary: Get templates matching regexp pattern
+      operationId: templateRegexpIdPOST
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegexpPattern'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Template'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+  
+  /templates/{templateId}:
+    get:
+      tags:
+        - template-registry
+      summary: Get a template by ID
+      operationId: templateIdGET
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Template'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+    
+    delete:
+      tags:
+        - template-registry
+      summary: Delete a template by ID
+      operationId: templateIdDELETE
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Template deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Template'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+  
+  /agreements:
+    get:
+      tags:
+        - agreement-registry
+      summary: Get all agreements
+      operationId: agreementsGET
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Agreement'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+    
+    post:
+      tags:
+        - agreement-registry
+      summary: Create a new agreement
+      operationId: agreementsPOST
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Agreement'
+      responses:
+        '200':
+          description: Agreement created successfully
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+    
+    delete:
+      tags:
+        - agreement-registry
+      summary: Delete all agreements
+      operationId: agreementsDELETE
+      responses:
+        '200':
+          description: Agreements deleted successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Agreement'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+  
+  /agreements/{agreementId}:
+    get:
+      tags:
+        - agreement-registry
+      summary: Get an agreement by ID
+      operationId: agreementsAgreementGET
+      parameters:
+        - name: agreementId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agreement'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+    
+    delete:
+      tags:
+        - agreement-registry
+      summary: Delete an agreement by ID
+      operationId: agreementsAgreementDELETE
+      parameters:
+        - name: agreementId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Agreement deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agreement'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+  
+  /states/{agreement}/guarantees/{guarantee}/overrides:
+    get:
+      tags:
+        - state-registry
+      summary: Get overrides for an agreement and guarantee
+      operationId: statesAgreementGuaranteesGuaranteeOverridesGET
+      parameters:
+        - name: agreement
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: guarantee
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Override'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+    
+    post:
+      tags:
+        - state-registry
+      summary: Add an override to an agreement and guarantee
+      operationId: statesAgreementGuaranteesGuaranteeOverridesPOST
+      parameters:
+        - name: agreement
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: guarantee
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Override'
+      responses:
+        '200':
+          description: Override added successfully
+          content:
+            application/json:
+              schema:
+                type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+    
+    delete:
+      tags:
+        - state-registry
+      summary: Delete an override from an agreement and guarantee
+      operationId: statesAgreementGuaranteesGuaranteeOverridesDELETE
+      parameters:
+        - name: agreement
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: guarantee
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Override'
+      responses:
+        '200':
+          description: Override deleted successfully
+          content:
+            application/json:
+              schema:
+                type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+  
+  /bills/{agreementId}:
+    get:
+      tags:
+        - bills
+      summary: Get all bills for an agreement
+      operationId: billsGET
+      parameters:
+        - name: agreementId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+        - name: to
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Bill'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+    
+    delete:
+      tags:
+        - bills
+      summary: Remove all bills for an agreement
+      operationId: billsDELETE
+      parameters:
+        - name: agreementId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Bills deleted successfully
+          content:
+            application/json:
+              schema:
+                type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+  
+  /bills/{agreementId}/{billId}:
+    put:
+      tags:
+        - bills
+      summary: Update a bill's state
+      operationId: billsPUT
+      parameters:
+        - name: agreementId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: billId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Bill'
+      responses:
+        '200':
+          description: Bill updated successfully
+          content:
+            application/json:
+              schema:
+                type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+  
+  /setUpAccountableRegistry/{agreement}:
+    get:
+      tags:
+        - accountable-registry
+      summary: Set up the accountable registry
+      operationId: setUpAccountableRegistryGET
+      parameters:
+        - name: agreement
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+        - name: to
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Accountable registry set up successfully
+          content:
+            application/json:
+              schema:
+                type: string
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+
+
 components:
   schemas:
-    Item:
+    Query:
+      type: object
+
+    Template:
+      type: object
+    
+    RegexpPattern:
+      type: object
+    
+    Agreement:
       type: object
       properties:
         id:
+          type: string
+        version:
+          type: string
+        type:
+          type: string
+        context:
+          $ref: '#/components/schemas/Context'
+        terms:
+          $ref: '#/components/schemas/Terms'
+    
+    Context:
+      type: object
+      properties:
+        provider:
+          type: string
+        consumer:
+          type: string
+        validity:
+          $ref: '#/components/schemas/Validity'
+        definitions:
+          $ref: '#/components/schemas/Definitions'
+        infrastructure:
+          $ref: '#/components/schemas/Infrastructure'
+    
+    Validity:
+      type: object
+      required:
+        - initial
+        - timeZone
+      properties:
+        initial:
+          type: string
+        timeZone:
+          type: string
+        end:
+          type: string
+    
+    Infrastructure:
+      type: object
+    
+    Schema:
+      type: object
+    
+    Scope:
+      type: object
+    
+    Log:
+      type: object
+    
+    Terms:
+      type: object
+      properties:
+        guarantees:
+          type: array
+          items:
+            $ref: '#/components/schemas/Guarantee'
+        configurations:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Configuration'
+        metrics:
+          $ref: '#/components/schemas/Metrics'
+        pricing:
+          $ref: '#/components/schemas/Pricing'
+        quotas:
+          $ref: '#/components/schemas/Quotas'
+        rates:
+          $ref: '#/components/schemas/Rates'
+    
+    Configuration:
+      type: object
+      properties:
+        scope:
+          type: object
+        of:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScopedConfiguration'
+    
+    ScopedConfiguration:
+      type: object
+      properties:
+        scope:
+          type: object
+        value:
+          type: string
+    
+    Guarantee:
+      type: object
+      properties:
+        id:
+          type: string
+        scope:
+          $ref: '#/components/schemas/GuaranteeScope'
+        of:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScopedGuarantee'
+    
+    GuaranteeScope:
+      type: object
+    
+    ScopedGuarantee:
+      type: object
+      properties:
+        scope:
+          $ref: '#/components/schemas/GuaranteeScope'
+        objective:
+          type: string
+        with:
+          type: object
+        window:
+          type: object
+        evidences:
+          type: array
+          items:
+            type: object
+        penalties:
+          type: array
+          items:
+            type: object
+        rewards:
+          type: array
+          items:
+            type: object
+      
+    ErrorModel:
+      type: object
+      properties:
+        code:
           type: integer
-        name:
+          format: int32
+        message:
+          type: string
+
+    Metrics:
+      type: object
+    
+    Pricing:
+      type: object
+      properties:
+        cost:
+          type: number
+          format: double
+        currency:
+          type: string
+        billing:
+          $ref: '#/components/schemas/Billing'
+    
+    Billing:
+      type: object
+      properties:
+        period:
+          type: string
+        initial:
+          type: string
+        penalties:
+          type: array
+          items:
+            $ref: '#/components/schemas/Compensation'
+        rewards:
+          type: array
+          items:
+            $ref: '#/components/schemas/Compensation'
+
+    Quotas:
+      type: array
+      items:
+        $ref: '#/components/schemas/Quota'
+
+    Rates:
+      type: object
+
+    Bill:
+      type: object
+      properties:
+        agreementId:
+          type: string
+        billId:
+          type: string
+        period:
+          ref: '#/components/schemas/Period'
+        state:
+          type: string
+        closeDate:
+          type: string
+
+    Definitions:
+      type: object
+      properties:
+        schemas:
+          type: object
+        scopes:
+          type: object
+        logs:
+          type: object
+
+    Quota:
+      type: object
+      properties:
+        id:
+          type: string
+        scope:
+          type: object
+        over:
+          type: object
+        of:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScopedQuota'
+
+    ScopedQuota:
+      type: object
+      properties:
+        scope:
+          type: object
+        limits:
+          type: array
+          items:
+            $ref: '#/components/schemas/Limit'
+      
+    Limit:
+      type: object
+      properties:
+        max:
+          type: number
+        period:
+          type: string
+
+    Override:
+      type: object
+      properties:
+        scope:
+          $ref: '#/components/schemas/Scope'
+        period:
+          $ref: '#/components/schemas/Period'
+        id:
+          type: integer
+        evidences:
+          type: object
+        comment:
+          type: string
+
+    Compensation:
+      type: object
+      properties:
+        over:
+          $ref: '#/components/schemas/Over'
+        of:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompensationOf'
+        aggegatedBy:
+          type: string
+        groupBy:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/GroupByObj'
+
+    Over:
+      type: object
+    
+    CompensationOf:
+      type: object
+      properties:
+        value:
+          type: string
+        condition:
+          type: string
+      
+    GroupByObj:
+      type: object
+    
+    Period:
+      type: object
+      properties:
+        from:
+          type: string
+        to:
           type: string
