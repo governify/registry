@@ -27,26 +27,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 const accountableRegistry = require('./accountableRegistry/accountableRegistry.js');
 
-/**
- * Registry override module.
- * @module AccountableRegistryRegistry
- * @see module:AccountableRegistryRegistryService
- * @see module:overrides
- * @requires AccountableRegistryRegistryService
- * */
-module.exports = {
+const express = require('express');
+const router = express.Router();
 
-  setUpAccountableRegistryGET: _setUpAccountableRegistryGET,
+router.get('/:agreement', accountableRegistry.setUpAccountableRegistryGET);
 
-};
-
-/**
- * setUpAccountableRegistryGET.
- * @param {Object} req request
- * @param {Object} res response
- * @param {Object} next next function
- * @alias module:AccountableRegistryRegistry.setUpAccountableRegistryGET
- * */
-function _setUpAccountableRegistryGET (req, res, next) {
-  accountableRegistry.setUpAccountableRegistryGET(req.swagger.params, res, next);
-}
+module.exports = router;

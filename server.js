@@ -176,7 +176,7 @@ function _deploy(configurations, expressMiddlewares, callback) {
 
     // app.use(`${API_PREFIX}/agreements`, agreementRegistry);
 
-    // app.use(`${API_PREFIX}/setUpAccountableRegistry`, setUpAccountableRegistry);
+    app.use(`${API_PREFIX}/setUpAccountableRegistry`, setUpAccountableRegistry);
 
     app.use(`${API_PREFIX}/bills`, billRegistry);
 

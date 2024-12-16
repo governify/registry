@@ -22,11 +22,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 const oasTelemetry = require('@oas-tools/oas-telemetry');
 const fs = require('fs');
 // Telemetry middleware ===================================
-let oasTelemetryMiddleware = null;
-if (process.env.TELEMETRY_ENABLED === 'true') {
-  const oasDoc = fs.readFileSync('./src/api/swaggerV6.yaml', 'utf8');
-  oasTelemetryMiddleware = oasTelemetry({ spec: oasDoc });
-}
+const oasDoc = fs.readFileSync('./src/api/swaggerV6.yaml', 'utf8');
+const oasTelemetryMiddleware = oasTelemetry({ spec: oasDoc });
 //= ======================================================
 
 const governify = require('governify-commons');
