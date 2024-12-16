@@ -62,37 +62,52 @@ module.exports = {
  * @alias module:bills.bills
  * PUT
  * */
-function _billsPUT (args, res) {
-  logger.info('New request to CREATE bill');
-  $RefParser.dereference(args.bill.value, function (err, schema) {
-    if (err) {
-      logger.error(err.toString());
-      res.status(500).json(new ErrorModel(500, err));
-    } else {
-      const BillsModel = db.models.BillsModel;
-      // const bills = new db.models.BillsModel(schema);
-      BillsModel.findOne({ agreementId: args.bill.value.agreementId, billId: args.bill.value.billId }, function (err, result) {
-        if (err) {
-          logger.error(err.toString());
-          res.status(500).json(new ErrorModel(500, err));
-        } else {
-          if (result && result.state === 'closed') {
-            res.status(403).send('Is not allowed to edit when state is closed.');
-          } else {
-            BillsModel.update({ agreementId: args.bill.value.agreementId, billId: args.bill.value.billId }, args.bill.value, { upsert: true }, function (err, result) {
-              if (err) {
-                logger.error(err.toString());
-                res.status(500).json(new ErrorModel(500, err));
-              }
-              logger.info('New bill saved successfully!');
-              res.status(200).send(result);
-            });
-          }
-        }
-      });
+async function _billsPUT(req, res) {
+  const { agreementId, billId } = req.params;
+  const data = req.body;
+
+  logger.info('New request to CREATE or UPDATE bill');
+
+  try {
+    // Dereference the schema
+    await $RefParser.dereference(data);
+
+    // Get the BillsModel
+    const BillsModel = db.models.BillsModel;
+
+    // Check if the bill already exists
+    const existingBill = await BillsModel.findOne({ agreementId, billId });
+
+    if (existingBill) {
+      if (existingBill.state === 'closed') {
+        // Bill is closed, so you can't modify it
+        return res.status(403).send('Cannot edit bill when state is closed.');
+      }
+
+      // If the bill exists and is not closed, update it
+      const updatedBill = await BillsModel.updateOne(
+        { agreementId, billId },
+        data,
+        { upsert: true }
+      );
+
+      logger.info('Bill updated successfully!');
+      return res.status(200).send(updatedBill);
     }
-  });
+
+    // If the bill does not exist, create a new one
+    const newBill = new BillsModel(data);
+    await newBill.save();
+
+    logger.info('New bill created successfully!');
+    return res.status(201).send(newBill);
+
+  } catch (err) {
+    logger.error('Error occurred during PUT request:', err);
+    return res.status(500).json(new ErrorModel(500, err));
+  }
 }
+
 
 /**
  * Get all bills.
@@ -162,7 +177,7 @@ async function _billsGET(req, res) {
  * */
 function _getBill (agreementId, from) {
   const BillsModel = db.models.BillsModel;
-  return BillsModel.findOne({ agreementId: agreementId, 'period.from': from }, function (err, bill) {
+  return BillsModel.findOne({ agreementId: agreementId, 'period.from': from }, function (err) {
     if (err) {
       logger.error(err.toString());
     }
@@ -174,14 +189,21 @@ function _getBill (agreementId, from) {
  * @param {String} agreementId AgreementId
  * @alias module:bills.getBill
  * */
-function _billsDELETE (req, res) {
-  const args = req.swagger.params;
+async function _billsDELETE(req, res) {
+  const { agreementId } = req.params;
   const BillsModel = db.models.BillsModel;
-  return BillsModel.deleteMany({ agreementId: args.agreementId.value }, function (err, bill) {
-    if (err) {
-      res.status(404).send('Agreement not found');
-    } else {
-      res.status(200).send('OK');
+
+  try {
+    const result = await BillsModel.deleteMany({ agreementId: agreementId.value });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).send('No bills found for the given agreementId');
     }
-  });
+
+    res.status(200).send('Bills deleted successfully');
+  } catch (err) {
+    logger.error('Error occurred during bills deletion:', err);
+    res.status(500).json(new ErrorModel(500, err));
+  }
 }
+
