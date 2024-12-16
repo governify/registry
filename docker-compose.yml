@@ -21,6 +21,11 @@ services:
     container_name: registry
     environment:
       - PORT=5400
+      - NODE_ENV=development
+      - API_PREFIX=%{API_PREFIX}
+      - MONGOPASS=${MONGOPASS}
+      - MONGOADMIN=${MONGOADMIN}
+      - HTTPS_SERVER=${HTTPS_SERVER}
     depends_on:
       - mongodb
     networks:

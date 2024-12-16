@@ -54,6 +54,6 @@ server:
   httpOptionsOK: true
   servePackageInfo: true
   listenOnHttps: false
-  apiVersion: 7
+  apiVersion: 6
 statusBouncer: false
 streaming: true

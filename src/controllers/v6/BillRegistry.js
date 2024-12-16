@@ -25,52 +25,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 'use strict';
 
+const express = require('express');
+const router = express.Router();
 const bills = require('./bills/bills.js');
 
-/**
- * Registry override module.
- * @module BillRegistry
- * @see module:BillRegistryService
- * @see module:overrides
- * @requires BillRegistryService
- * */
-module.exports = {
+router.get('/:agreementId', bills.billsGET);
+router.put('/:agreementId/:id', bills.billsPUT);
+router.delete('/:agreementId', bills.billsDELETE);
 
-  billsGET: _billsGET,
-  billsPUT: _billsPUT,
-  billsDELETE: _billsDELETE
-
-};
-
-/**
- * billsGET.
- * @param {Object} req request
- * @param {Object} res response
- * @param {Object} next next function
- * @alias module:BillRegistry.billsGET
- * */
-function _billsGET (req, res, next) {
-  bills.billsGET(req, res, next);
-}
-
-/**
- * billsDELETE.
- * @param {Object} req request
- * @param {Object} res response
- * @param {Object} next next function
- * @alias module:BillRegistry.billsDELETE
- * */
-function _billsDELETE (req, res, next) {
-  bills.billsDELETE(req, res, next);
-}
-
-/**
- * billsPUT.
- * @param {Object} req request
- * @param {Object} res response
- * @param {Object} next next function
- * @alias module:BillRegistry.billsPUT
- * */
-function _billsPUT (req, res, next) {
-  bills.billsPUT(req.swagger.params, res, next);
-}
+module.exports = router;
