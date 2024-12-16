@@ -73,6 +73,13 @@ function _deploy(configurations, expressMiddlewares, callback) {
   const CURRENT_API_VERSION = config.server.apiVersion;
   const swaggerUtils = require('./src/utils').swagger;
 
+  const API_PREFIX = process.env.API_PREFIX || '/api/v6';
+  const agreementRegistry = require('./src/controllers/v6/AgreementRegistry.js');
+  const setUpAccountableRegistry = require('./src/controllers/v6/AccountableRegistry.js');
+  const billRegistry = require('./src/controllers/v6/BillRegistry.js');
+  const stateRegistry = require('./src/controllers/v6/StateRegistry.js');
+  const templateRegistry = require('./src/controllers/v6/TemplateRegistry.js');
+
   // Serve static files
   app.use(express.static(frontendPath));
 
@@ -112,7 +119,7 @@ function _deploy(configurations, expressMiddlewares, callback) {
     });
   }
 
-  app.use('/api/v6/states/:agreement', middlewares.stateInProgress);
+  // app.use(`${API_PREFIX}/states/:agreement`, middlewares.stateInProgress);
 
   // Redirects
   app.get('/api/latest/docs', (req, res) => {
@@ -166,6 +173,17 @@ function _deploy(configurations, expressMiddlewares, callback) {
     }
   
     logger.info('Initializing app after db connection');
+
+    // app.use(`${API_PREFIX}/agreements`, agreementRegistry);
+
+    // app.use(`${API_PREFIX}/setUpAccountableRegistry`, setUpAccountableRegistry);
+
+    app.use(`${API_PREFIX}/bills`, billRegistry);
+
+    // // app.use(`${API_PREFIX}/states`, middlewares.stateInProgress, stateRegistry);
+    // app.use(`${API_PREFIX}/states`, stateRegistry);
+
+    // app.use(`${API_PREFIX}/templates`, templateRegistry);
   
     // Serve Swagger UI
     const swaggerDocument =  swaggerUtils.getSwaggerDoc(CURRENT_API_VERSION);
@@ -199,7 +217,7 @@ function _deploy(configurations, expressMiddlewares, callback) {
 
     const server = createServer().listen(serverOptions, () => {
       logger.info(`Server listening on port ${serverPort} (${config.server.listenOnHttps ? 'https' : 'http'}://localhost:${serverPort})`);
-      logger.info('Swagger UI and API docs served in /api/v6/docs and /api/v6/api-docs');
+      logger.info(`Swagger UI and API docs served in ${API_PREFIX}/docs and ${API_PREFIX}/api-docs`);
       if (callback) callback(server);
     });
   });  

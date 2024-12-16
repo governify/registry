@@ -101,70 +101,58 @@ function _billsPUT (args, res) {
  * @param {Object} next next function
  * @alias module:bills.billsGET
  * */
-function _billsGET (req, res) {
-  /**
-     * parameters expected in the args:
-     * namespace (String)
-     **/
+async function _billsGET(req, res) {
+  const { agreementId } = req.params;
+  const { from, to } = req.query; 
 
-  const args = req.swagger.params;
-  const from = args.from.value;
-  const to = args.to.value;
-  logger.info('New request to GET bills bills/bills.js');
-  const BillsModel = db.models.BillsModel;
-  const AgreementModel = db.models.AgreementModel;
+  logger.info('New request to GET bills from bills/bills.js');
 
-  AgreementModel.findOne({ id: args.agreementId.value }, function (err, agreement) {
-    if (err) {
-      logger.error(err.toString());
-      res.status(500).json(new ErrorModel(500, err));
-    } else {
-      if (agreement) {
-        BillsModel.find({ agreementId: args.agreementId.value }, function (err, bills) {
-          if (err) {
-            logger.error(err.toString());
-            res.status(500).json(new ErrorModel(500, err));
-          } else {
-            let periods;
-            if (from && to) {
-              const window = {
-                from: from,
-                end: to
-              };
-              periods = utils.time.getPeriods(agreement, window);
-            } else {
-              periods = utils.time.getPeriods(agreement);
-            }
+  try {
+    const AgreementModel = db.models.AgreementModel;
+    const BillsModel = db.models.BillsModel;
 
-            const billsDates = [];
-            const orderedBills = [];
-            for (const x in bills) {
-              const bill = bills[x];
-              billsDates.push(moment(bill.period.from).unix());
-            }
-            for (const i in periods) {
-              const period = periods[i];
-              if (!billsDates.includes(moment(period.from).unix())) {
-                const standardBill = {
-                  agreementId: args.agreementId.value,
-                  billId: moment(period.from).unix() + '',
-                  state: 'open',
-                  period: period
-                };
-                orderedBills.push(standardBill);
-              } else {
-                orderedBills.push(bills[billsDates.indexOf(moment(period.from).unix())]);
-              }
-            }
-            logger.info('Bills returned returned');
-            res.status(200).json(orderedBills);
-          }
-        });
-      } else {
-        res.status(404).send('Agreement not found');
-      }
+    // Find the agreement based on the agreementId
+    const agreement = await AgreementModel.findOne({ id: agreementId });
+
+    if (!agreement) {
+      return res.status(404).send('Agreement not found');
     }
-  });
+
+    // Find all bills for the given agreementId
+    const bills = await BillsModel.find({ agreementId });
+
+    let periods;
+    if (from && to) {
+      const window = { from, end: to };
+      periods = utils.time.getPeriods(agreement, window);
+    } else {
+      periods = utils.time.getPeriods(agreement);
+    }
+
+    const billsDates = bills.map(bill => moment(bill.period.from).unix());
+    const orderedBills = periods.map(period => {
+      const periodUnix = moment(period.from).unix();
+      const existingBillIndex = billsDates.indexOf(periodUnix);
+
+      if (existingBillIndex === -1) {
+        return {
+          agreementId,
+          billId: periodUnix.toString(),
+          state: 'open',
+          period,
+        };
+      } else {
+        return bills[existingBillIndex];
+      }
+    });
+
+    logger.info('Bills returned successfully');
+    return res.status(200).json(orderedBills);
+    
+  } catch (err) {
+    logger.error('Error occurred:', err);
+    return res.status(500).json(new ErrorModel(500, err));
+  }
 }
 
 /**

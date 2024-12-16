@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: Governify Registry
   description: Governify Registry API
-  version: '7'
+  version: '6'
   termsOfService: www.isa.us.es
   contact:
     name: ISA Research Group
@@ -13,7 +13,7 @@ info:
     url: 'http://opensource.org/licenses/MIT'
 
 servers:
-  - url: /api/v7
+  - url: /api/v6
     description: Development server
   - url: https://registry.governify.io/api/v6
     description: Production server
@@ -403,10 +403,12 @@ paths:
             type: string
         - name: from
           in: query
+          required: true
           schema:
             type: string
         - name: to
           in: query
+          required: true
           schema:
             type: string
       responses:
