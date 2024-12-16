@@ -65,7 +65,7 @@ function _deploy(configurations, expressMiddlewares, callback) {
 
   const logger = governify.getLogger().tag('deploy');
   const db = require('./src/database');
-  const middlewares = require('./src/utils').middlewares;
+  // const middlewares = require('./src/utils').middlewares;
 
   const app = express();
   const frontendPath = path.join(__dirname, '/public');
@@ -74,11 +74,10 @@ function _deploy(configurations, expressMiddlewares, callback) {
   const swaggerUtils = require('./src/utils').swagger;
 
   const API_PREFIX = process.env.API_PREFIX || '/api/v6';
-  const agreementRegistry = require('./src/controllers/v6/AgreementRegistry.js');
-  const setUpAccountableRegistry = require('./src/controllers/v6/AccountableRegistry.js');
+  // const agreementRegistry = require('./src/controllers/v6/AgreementRegistry.js');
   const billRegistry = require('./src/controllers/v6/BillRegistry.js');
-  const stateRegistry = require('./src/controllers/v6/StateRegistry.js');
-  const templateRegistry = require('./src/controllers/v6/TemplateRegistry.js');
+  // const stateRegistry = require('./src/controllers/v6/StateRegistry.js');
+  // const templateRegistry = require('./src/controllers/v6/TemplateRegistry.js');
 
   // Serve static files
   app.use(express.static(frontendPath));
@@ -175,8 +174,6 @@ function _deploy(configurations, expressMiddlewares, callback) {
     logger.info('Initializing app after db connection');
 
     // app.use(`${API_PREFIX}/agreements`, agreementRegistry);
-
-    app.use(`${API_PREFIX}/setUpAccountableRegistry`, setUpAccountableRegistry);
 
     app.use(`${API_PREFIX}/bills`, billRegistry);
 
