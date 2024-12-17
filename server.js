@@ -77,7 +77,7 @@ function _deploy(configurations, expressMiddlewares, callback) {
   // const agreementRegistry = require('./src/controllers/v6/AgreementRegistry.js');
   const billRegistry = require('./src/controllers/v6/BillRegistry.js');
   // const stateRegistry = require('./src/controllers/v6/StateRegistry.js');
-  // const templateRegistry = require('./src/controllers/v6/TemplateRegistry.js');
+  const templateRegistry = require('./src/controllers/v6/TemplateRegistry.js');
 
   // Serve static files
   app.use(express.static(frontendPath));
@@ -180,7 +180,7 @@ function _deploy(configurations, expressMiddlewares, callback) {
     // // app.use(`${API_PREFIX}/states`, middlewares.stateInProgress, stateRegistry);
     // app.use(`${API_PREFIX}/states`, stateRegistry);
 
-    // app.use(`${API_PREFIX}/templates`, templateRegistry);
+    app.use(`${API_PREFIX}/templates`, templateRegistry);
   
     // Serve Swagger UI
     const swaggerDocument =  swaggerUtils.getSwaggerDoc(CURRENT_API_VERSION);

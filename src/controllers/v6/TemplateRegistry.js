@@ -1,4 +1,5 @@
 /*!
+governify-registry 3.0.1, built on: 2018-04-18
 Copyright (C) 2018 ISA group
 http://www.isa.us.es/
 https://github.com/isa-group/governify-registry
@@ -24,89 +25,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 'use strict';
 
+const express = require('express');
+const router = express.Router();
 const templates = require('./templates/templates.js');
 
-/**
- * Registry template module.
- * @module TemplateRegistry
- * @see module:TemplateRegistryService
- * @see module:templates
- * @requires TemplateRegistryService
- * */
-module.exports = {
+router.get('/', templates.templatesGET);
+router.post('/', templates.templatesPOST);
 
-  templatesGET: _templatesGET,
-  templatesDELETE: _templatesDELETE,
-  templatesPOST: _templatesPOST,
+router.get('/:templateId', templates.templateIdGET);
+router.delete('/:templateId', templates.templateIdDELETE);
 
-  templateIdGET: _templateIdGET,
-  templateRegexpIdPOST: _templateRegexpIdPOST,
-  templateIdDELETE: _templateIdDELETE,
-
-};
-
-
-/**
- * templatesIdDELETE.
- * @param {Object} req request
- * @param {Object} res response
- * @param {Object} next next function
- * @alias module:TemplateRegistry.templatesIdDELETE
- * */
-function _templateIdDELETE (req, res, next) {
-  templates.templateIdDELETE(req.swagger.params, res, next);
-}
-
-/**
- * templatesRegexIdGET.
- * @param {Object} req request
- * @param {Object} res response
- * @param {Object} next next function
- * @alias module:TemplateRegistry.templatesRegexIdGET
- * */
-function _templateRegexpIdPOST (req, res, next) {
-  templates.templateRegexpIdPOST(req.swagger.params, res, next);
-}
-/**
- * templatesIdGET.
- * @param {Object} req request
- * @param {Object} res response
- * @param {Object} next next function
- * @alias module:TemplateRegistry.templatesIdGET
- * */
-function _templateIdGET (req, res, next) {
-  templates.templateIdGET(req.swagger.params, res, next);
-}
-
-/**
- * templatesGET.
- * @param {Object} req request
- * @param {Object} res response
- * @param {Object} next next function
- * @alias module:TemplateRegistry.templatesGET
- * */
-function _templatesGET (req, res, next) {
-  templates.templatesGET(req, res, next);
-}
-
-/**
- * templatesDELETE.
- * @param {Object} req request
- * @param {Object} res response
- * @param {Object} next next function
- * @alias module:TemplateRegistry.templatesDELETE
- * */
-function _templatesDELETE (req, res, next) {
-  templates.templatesDELETE(req.swagger.params, res, next);
-}
-
-/**
- * templatesPOST.
- * @param {Object} req request
- * @param {Object} res response
- * @param {Object} next next function
- * @alias module:TemplateRegistry.templatesPOST
- * */
-function _templatesPOST (req, res, next) {
-  templates.templatesPOST(req.swagger.params, res, next);
-}
+module.exports = router;

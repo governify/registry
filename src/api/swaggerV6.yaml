@@ -74,38 +74,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorModel'
   
-  /templates/regexp:
-    post:
-      tags:
-        - template-registry
-      summary: Get templates matching regexp pattern
-      operationId: templateRegexpIdPOST
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RegexpPattern'
-      responses:
-        '200':
-          description: Successful response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Template'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorModel'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorModel'
-  
   /templates/{templateId}:
     get:
       tags:
@@ -495,9 +463,6 @@ components:
       type: object
 
     Template:
-      type: object
-    
-    RegexpPattern:
       type: object
     
     Agreement:
