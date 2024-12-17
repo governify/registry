@@ -134,7 +134,6 @@ function _deploy(configurations, expressMiddlewares, callback) {
     res.redirect(`/api/v${CURRENT_API_VERSION}/api-docs`);
   });
 
-  // Heap stats can use newer V8 methods
   app.get('/heapStats', (req, res) => {
     const v8 = require('v8');
     const heapStats = v8.getHeapStatistics();
@@ -146,6 +145,7 @@ function _deploy(configurations, expressMiddlewares, callback) {
     roundedHeapStats.units = 'MB';
     res.json(roundedHeapStats);
   });
+
 
   // Apply additional middlewares
   for (const middleware of expressMiddlewares) {
