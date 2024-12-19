@@ -27,8 +27,6 @@ tags:
     description: State registry operations
   - name: bills
     description: Bills operations
-  - name: accountable-registry
-    description: Accountable registry operations
 
 paths:
   /templates:

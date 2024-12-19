@@ -27,7 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 const express = require('express');
 const router = express.Router();
-const bills = require('./bills/bills.js');
+const bills = require('../../controllers/v6/bills/bills.js');
 
 router.get('/:agreementId', bills.billsGET);
 router.put('/:agreementId/:id', bills.billsPUT);
