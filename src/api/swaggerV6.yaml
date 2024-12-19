@@ -23,8 +23,18 @@ tags:
     description: Template registry operations
   - name: agreement-registry
     description: Agreement registry operations
-  - name: state-registry
-    description: State registry operations
+  - name: agreement-states
+    description: Agreement states operations
+  - name: guarantees-states
+    description: Guarantees states operations
+  - name: metrics-states
+    description: Metrics states operations
+  - name: pricings-states
+    description: Pricing states operations
+  - name: quotas-states
+    description: Quotas states operations
+  - name: rates-states
+    description: Rates states operations
   - name: bills
     description: Bills operations
 
@@ -34,7 +44,6 @@ paths:
       tags:
         - template-registry
       summary: Get all templates
-      operationId: templatesGET
       responses:
         '200':
           description: Successful response
@@ -55,7 +64,6 @@ paths:
       tags:
         - template-registry
       summary: Create a new template
-      operationId: templatesPOST
       requestBody:
         required: true
         content:
@@ -77,7 +85,6 @@ paths:
       tags:
         - template-registry
       summary: Get a template by ID
-      operationId: templateIdGET
       parameters:
         - name: templateId
           in: path
@@ -108,7 +115,6 @@ paths:
       tags:
         - template-registry
       summary: Delete a template by ID
-      operationId: templateIdDELETE
       parameters:
         - name: templateId
           in: path
@@ -134,7 +140,6 @@ paths:
       tags:
         - agreement-registry
       summary: Get all agreements
-      operationId: agreementsGET
       responses:
         '200':
           description: Successful response
@@ -155,7 +160,6 @@ paths:
       tags:
         - agreement-registry
       summary: Create a new agreement
-      operationId: agreementsPOST
       requestBody:
         required: true
         content:
@@ -176,7 +180,6 @@ paths:
       tags:
         - agreement-registry
       summary: Delete all agreements
-      operationId: agreementsDELETE
       responses:
         '200':
           description: Agreements deleted successfully
@@ -198,7 +201,6 @@ paths:
       tags:
         - agreement-registry
       summary: Get an agreement by ID
-      operationId: agreementsAgreementGET
       parameters:
         - name: agreementId
           in: path
@@ -229,7 +231,6 @@ paths:
       tags:
         - agreement-registry
       summary: Delete an agreement by ID
-      operationId: agreementsAgreementDELETE
       parameters:
         - name: agreementId
           in: path
@@ -249,20 +250,390 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorModel'
-  
-  /states/{agreement}/guarantees/{guarantee}/overrides:
+  /states:
+    delete:
+      tags:
+        - agreement-states
+      description: XXX
+      responses:
+        '200':
+          description: Success
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+  /states/{agreementId}:
     get:
       tags:
-        - state-registry
-      summary: Get overrides for an agreement and guarantee
-      operationId: statesAgreementGuaranteesGuaranteeOverridesGET
+        - agreement-states
+      description: XXX
       parameters:
-        - name: agreement
+        - name: agreementId
+          in: path
+          description: XXX
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgreementState'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+    delete:
+      tags:
+        - agreement-states
+      description: XXX
+      parameters:
+        - name: agreementId
+          in: path
+          description: XXX
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+
+  /states/{agreementId}/filtered:
+    get:
+      tags:
+        - agreement-states
+      description: XXX
+      parameters:
+        - name: agreementId
+          in: path
+          description: XXX
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+
+  /states/{agreementId}/reload:
+    get:
+      tags:
+        - agreement-states
+      description: XXX
+      parameters:
+        - name: agreementId
+          in: path
+          description: XXX
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+  
+  /states/{agreementId}/overrides:
+    delete:
+      tags:
+        - agreement-states
+      description: Delete all overrides for one agreement
+      parameters:
+        - name: agreementId
+          in: path
+          description: XXX
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Success
+          schema:
+            type: string
+        '400':
+          description: Bad request
+          schema:
+            $ref: '#/components/schemas/ErrorModel'
+      x-swagger-router-controller: OverrideRegistry
+
+  /states/{agreementId}/metrics:
+    get:
+      tags:
+        - metrics-states
+      description: XXX
+      parameters:
+        - name: agreementId
+          in: path
+          description: XXX
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsState'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+
+  /states/{agreementId}/metrics/{metricId}:
+    get:
+      tags:
+        - metrics-states
+      description: XXX
+      parameters:
+        - name: agreementId
+          in: path
+          description: XXX
+          required: true
+          schema:
+            type: string
+        - name: metricId
+          in: path
+          description: XXX
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricState'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+    post:
+      tags:
+        - metrics-states
+      description: XXX
+      parameters:
+        - name: agreementId
+          in: path
+          description: XXX
+          required: true
+          schema:
+            type: string
+        - name: metricId
+          in: path
+          description: XXX
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: XXX
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/query'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricState'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+
+  /states/{agreementId}/metrics/{metricId}/increase:
+    post:
+      tags:
+        - metrics-states
+      description: XXX
+      parameters:
+        - name: agreementId
+          in: path
+          description: XXX
+          required: true
+          schema:
+            type: string
+        - name: metricId
+          in: path
+          description: XXX
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: XXX
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/query'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricState'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+
+  /states/{agreementId}/guarantees:
+    get:
+      tags:
+        - guarantees-states
+      description: XXX
+      parameters:
+        - name: agreementId
+          in: path
+          description: XXX
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Success
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/GuaranteeState'
+        '400':
+          description: Bad request
+          schema:
+            $ref: '#/components/schemas/ErrorModel'
+  /states/{agreementId}/guarantees/{guaranteeId}:
+    get:
+      tags:
+        - guarantees-states
+      description: XXX
+      parameters:
+        - name: agreementId
+          in: path
+          description: XXX
+          required: true
+          type: string
+        - name: guaranteeId
+          in: path
+          description: XXX
+          required: true
+          type: string
+        - name: from
+          in: query
+          description: XXX
+          required: false
+          type: string
+        - name: to
+          in: query
+          description: XXX
+          required: false
+          type: string
+        - name: forceUpdate
+          in: query
+          description: XXX
+          required: false
+          type: boolean
+        - name: lasts
+          in: query
+          description: XXX
+          required: false
+          type: integer
+        - name: withNoEvidences
+          in: query
+          description: XXX
+          required: false
+          type: boolean
+      responses:
+        '200':
+          description: Success
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/GuaranteeState'
+        '400':
+          description: Bad request
+          schema:
+            $ref: '#/components/schemas/ErrorModel'
+  /states/{agreementId}/guarantees/{guaranteeId}/penalty:
+    get:
+      tags:
+        - guarantees-states
+      description: >-
+        ** PLEASE NOTE: Currently, this method is only supported over Guarantees
+        defined with a MONTHLY period **
+      parameters:
+        - name: agreementId
+          in: path
+          description: XXX
+          required: true
+          type: string
+        - name: guaranteeId
+          in: path
+          description: XXX
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Success
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/GuaranteeState'
+        '400':
+          description: Bad request
+          schema:
+            $ref: '#/components/schemas/ErrorModel'
+
+  /states/{agreementId}/guarantees/{guaranteeId}/overrides:
+    get:
+      tags:
+        - guarantees-states
+      summary: Get overrides for an agreement and guarantee
+      parameters:
+        - name: agreementId
           in: path
           required: true
           schema:
             type: string
-        - name: guarantee
+        - name: guaranteeId
           in: path
           required: true
           schema:
@@ -285,16 +656,15 @@ paths:
     
     post:
       tags:
-        - state-registry
+        - guarantees-states
       summary: Add an override to an agreement and guarantee
-      operationId: statesAgreementGuaranteesGuaranteeOverridesPOST
       parameters:
-        - name: agreement
+        - name: agreementId
           in: path
           required: true
           schema:
             type: string
-        - name: guarantee
+        - name: guaranteeId
           in: path
           required: true
           schema:
@@ -321,16 +691,15 @@ paths:
     
     delete:
       tags:
-        - state-registry
+        - guarantees-states
       summary: Delete an override from an agreement and guarantee
-      operationId: statesAgreementGuaranteesGuaranteeOverridesDELETE
       parameters:
-        - name: agreement
+        - name: agreementId
           in: path
           required: true
           schema:
             type: string
-        - name: guarantee
+        - name: guaranteeId
           in: path
           required: true
           schema:
@@ -355,12 +724,120 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorModel'
   
+  /states/{agreementId}/pricing/billing/penalties:
+    get:
+      tags:
+        - pricings-states
+      description: XXX
+      parameters:
+        - name: agreementId
+          in: path
+          description: XXX
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Success
+          schema:
+            $ref: '#/components/schemas/GuaranteesState'
+        '400':
+          description: Bad request
+          schema:
+            $ref: '#/components/schemas/ErrorModel'
+
+  /states/{agreementId}/quotas:
+    get:
+      tags:
+        - quotas-states
+      description: XXX
+      parameters:
+        - name: agreementId
+          in: path
+          description: XXX
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Success
+          schema:
+            $ref: '#/components/schemas/QuotasState'
+        '400':
+          description: Bad request
+          schema:
+            $ref: '#/components/schemas/ErrorModel'
+  /states/{agreementId}/quotas/{quotaId}:
+    get:
+      tags:
+        - quotas-states
+      description: XXX
+      parameters:
+        - name: agreementId
+          in: path
+          description: XXX
+          required: true
+          type: string
+        - name: quotaId
+          in: path
+          description: XXX
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Success
+          schema:
+            $ref: '#/components/schemas/QuotaState'
+        '400':
+          description: Bad request
+          schema:
+            $ref: '#/components/schemas/ErrorModel'
+
+  /states/{agreementId}/rates:
+    get:
+      tags:
+        - rates-states
+      description: XXX
+      parameters:
+        - name: agreementId
+          in: path
+          description: XXX
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Success
+          schema:
+            $ref: '#/components/schemas/RatesState'
+        '400':
+          description: Bad request
+          schema:
+            $ref: '#/components/schemas/ErrorModel'
+  /states/{agreementId}/rates/{rateId}:
+    get:
+      tags:
+        - rates-states
+      description: XXX
+      parameters:
+        - name: agreementId
+          in: path
+          description: XXX
+          required: true
+          type: string
+        - name: rateId
+          in: path
+          description: XXX
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Success
+          schema:
+            $ref: '#/components/schemas/RateState'
+
   /bills/{agreementId}:
     get:
       tags:
         - bills
       summary: Get all bills for an agreement
-      operationId: billsGET
       parameters:
         - name: agreementId
           in: path
@@ -397,7 +874,6 @@ paths:
       tags:
         - bills
       summary: Remove all bills for an agreement
-      operationId: billsDELETE
       parameters:
         - name: agreementId
           in: path
@@ -423,7 +899,6 @@ paths:
       tags:
         - bills
       summary: Update a bill's state
-      operationId: billsPUT
       parameters:
         - name: agreementId
           in: path
@@ -747,3 +1222,78 @@ components:
           type: string
         to:
           type: string
+    
+    AgreementState:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+      
+    MetricsState:
+      type: object
+      properties:
+        id:
+          type: string
+        metrics:
+          type: array
+          items:
+            type: string
+    MetricState:
+      type: object
+      properties:
+        id:
+          type: string
+        value:
+          type: integer
+
+    GuaranteeState:
+      type: object
+      properties:
+        guarantee:
+          type: string
+        scope:
+          $ref: '#/components/schemas/Scope'
+        logs:
+          $ref: '#/components/schemas/Log'
+        period:
+          $ref: '#/components/schemas/Period'
+        evidences:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceState'
+        fulfilled:
+          type: boolean
+        penalties:
+          $ref: '#/components/schemas/PenaltyState'
+    
+    EvidenceState:
+      type: object
+      properties:
+        evidence:
+          type: boolean
+        issue_init:
+          type: string
+        issue_end:
+          type: string
+        issue_duration:
+          type: string
+      
+    PenaltyState:
+      type: object
+
+    GuaranteesState:
+      type: object
+
+    QuotasState:
+      type: object
+    
+    QuotaState:
+      type: object
+
+    RatesState:
+      type: object
+
+    RateState:
+      type: object

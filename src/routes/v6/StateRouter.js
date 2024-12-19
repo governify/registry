@@ -35,10 +35,11 @@ router.use(middlewares.stateInProgress);
 
 // Agreements
 router.delete('/', states.agreements.statesDELETE);
-router.get('/', states.agreements.statesFilter);
 router.get('/:agreementId', states.agreements.agreementIdGET);
 router.delete('/:agreementId', states.agreements.agreementIdDELETE);
+router.get('/:agreementId/filtered', states.agreements.statesFilter);
 router.get('/:agreementId/reload', states.agreements.agreementIdRELOAD);
+router.delete('/:agreementId/overrides', overrides.statesAgreementOverridesDELETE);
 
 // Agreements Guarantees
 router.get('/:agreementId/guarantees', states.guarantees.guaranteesGET);
@@ -47,7 +48,6 @@ router.get('/:agreementId/guarantees/:guaranteeId/penalty', states.guarantees.gu
 router.get('/:agreementId/guarantees/:guaranteeId/overrides', overrides.statesAgreementGuaranteesGuaranteeOverridesGET);
 router.post('/:agreementId/guarantees/:guaranteeId/overrides', overrides.statesAgreementGuaranteesGuaranteeOverridesPOST);
 router.delete('/:agreementId/guarantees/:guaranteeId/overrides', overrides.statesAgreementGuaranteesGuaranteeOverridesDELETE);
-router.delete('/:agreementId/overrides', overrides.statesAgreementOverridesDELETE);
 
 // Agreements Metrics
 router.get('/:agreementId/metrics', states.metrics.metricsGET);
