@@ -27,7 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 const express = require('express');
 const router = express.Router();
-const templates = require('./templates/templates.js');
+const templates = require('../../controllers/v6/templates/templates.js');
 
 router.get('/', templates.templatesGET);
 router.post('/', templates.templatesPOST);
