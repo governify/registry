@@ -65,7 +65,6 @@ function _deploy(configurations, expressMiddlewares, callback) {
 
   const logger = governify.getLogger().tag('deploy');
   const db = require('./src/database');
-  // const middlewares = require('./src/utils').middlewares;
 
   const app = express();
   const frontendPath = path.join(__dirname, '/public');
@@ -75,9 +74,9 @@ function _deploy(configurations, expressMiddlewares, callback) {
 
   const API_PREFIX = process.env.API_PREFIX || '/api/v6';
   // const agreementRegistry = require('./src/controllers/v6/AgreementRegistry.js');
-  const billRegistry = require('./src/controllers/v6/BillRegistry.js');
-  // const stateRegistry = require('./src/controllers/v6/StateRegistry.js');
-  const templateRegistry = require('./src/controllers/v6/TemplateRegistry.js');
+  const billRouter = require('./src/routes/v6/BillRouter.js');
+  const stateRouter = require('./src/routes/v6/StateRouter.js');
+  const templateRouter = require('./src/routes/v6/TemplateRouter.js');
 
   // Serve static files
   app.use(express.static(frontendPath));
@@ -118,8 +117,6 @@ function _deploy(configurations, expressMiddlewares, callback) {
     });
   }
 
-  // app.use(`${API_PREFIX}/states/:agreement`, middlewares.stateInProgress);
-
   // Redirects
   app.get('/api/latest/docs', (req, res) => {
     res.redirect(`/api/v${CURRENT_API_VERSION}/docs`);
@@ -134,6 +131,7 @@ function _deploy(configurations, expressMiddlewares, callback) {
     res.redirect(`/api/v${CURRENT_API_VERSION}/api-docs`);
   });
 
+  // V8 Heap stats
   app.get('/heapStats', (req, res) => {
     const v8 = require('v8');
     const heapStats = v8.getHeapStatistics();
@@ -174,13 +172,9 @@ function _deploy(configurations, expressMiddlewares, callback) {
     logger.info('Initializing app after db connection');
 
     // app.use(`${API_PREFIX}/agreements`, agreementRegistry);
-
-    app.use(`${API_PREFIX}/bills`, billRegistry);
-
-    // // app.use(`${API_PREFIX}/states`, middlewares.stateInProgress, stateRegistry);
-    // app.use(`${API_PREFIX}/states`, stateRegistry);
-
-    app.use(`${API_PREFIX}/templates`, templateRegistry);
+    app.use(`${API_PREFIX}/bills`, billRouter);
+    app.use(`${API_PREFIX}/states`, stateRouter);
+    app.use(`${API_PREFIX}/templates`, templateRouter);
   
     // Serve Swagger UI
     const swaggerDocument =  swaggerUtils.getSwaggerDoc(CURRENT_API_VERSION);
