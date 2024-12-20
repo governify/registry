@@ -48,18 +48,22 @@ module.exports = {
  * @param {Object} next next function
  * @alias module:rates.ratesGET
  * */
-function _ratesGET (args, res) {
+async function _ratesGET (req, res) {
   logger.info('New request to GET rates');
-  const agreementId = args.agreement.value;
+  const { agreementId } = req.params;
 
-  stateManager({
-    id: agreementId
-  }).get('rates', function (rates) {
-    res.json(rates);
-  }, function (err) {
+  try {
+    const state = await stateManager({ id: agreementId });
+    state.get('rates', function (rates) {
+      res.json(rates);
+    }, function (err) {
+      logger.error(err.message.toString());
+      return res.status(err.code || 500).json({ error: err.message });
+    });
+  } catch (err) {
     logger.error(err.message.toString());
-    res.status(err.code).json(err);
-  });
+    return res.status(err.code || 500).json({ error: err.message });
+  }
 }
 
 /**
@@ -69,19 +73,27 @@ function _ratesGET (args, res) {
  * @param {Object} next next function
  * @alias module:rates.ratesRateGET
  * */
-function _ratesIdGET (args, res) {
+async function _ratesIdGET (req, res) {
   logger.info('New request to GET rate');
-  const agreementId = args.agreement.value;
-  const rateId = args.rate.value;
+  const { agreementId, rateId } = req.params;
 
-  stateManager({
-    id: agreementId
-  }).get('rates', {
-    id: rateId
-  }, function (rate) {
-    res.json(rate);
-  }, function (err) {
+  if (!rateId || typeof rateId !== 'string' || rateId.trim() === '') {
+    return res.status(400).json({ error: 'Invalid rateId' });
+  }
+
+  try {
+    const state = await stateManager({ id: agreementId });
+    state.get('rates', {
+      id: rateId
+    }, function (rate) {
+      res.json(rate);
+    }, function (err) {
+      logger.error(err.message.toString());
+      res.status(err.code).json(err);
+    });
+  } catch (err) {
     logger.error(err.message.toString());
-    res.status(err.code).json(err);
-  });
+    return res.status(err.code || 500).json({ error: err.message });
+  }
+
 }

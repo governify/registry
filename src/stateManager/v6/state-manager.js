@@ -53,45 +53,45 @@ module.exports = initialize;
 
 /**
  * Initialize the StateManager for an agreement.
+ * 
+ * Building stateManager object with agreement definitions and stateManager method
+ * get ==> gets one or more states, put ==> save an scoped state,
+ * update ==> calculates one or more states and save them,
+ * current ==> do a map over state an returns the current record for this state.
+ * 
  * @param {String} _agreement agreement ID
  * @return {Promise} Promise that will return a StateManager object
  * @alias module:stateManager.initialize
  * */
-function initialize (_agreement) {
+async function initialize(_agreement) {
   logger.debug('(initialize) Initializing state with agreement ID = ' + _agreement.id);
-  return new Promise(function (resolve, reject) {
+  
+  try {
     const AgreementModel = db.models.AgreementModel;
     logger.debug('Searching agreement with agreementID = ' + _agreement.id);
-    // Executes a mongodb query to search Agreement file with id = _agreement
-    AgreementModel.findOne({
-      id: _agreement.id
-    }, function (err, ag) {
-      if (err) {
-        // something fail on mongodb query and error is returned
-        logger.error(err.toString());
-        return reject(new ErrorModel(500, err));
-      } else {
-        if (!ag) {
-          // Not found agreement with id = _agreement
-          return reject(new ErrorModel(404, 'There is no agreement with id: ' + _agreement.id));
-        }
-        logger.debug('StateManager for agreementID = ' + _agreement.id + ' initialized');
-        // Building stateManager object with agreement definitions and stateManager method
-        // get ==> gets one or more states, put ==> save an scoped state,
-        // update ==> calculates one or more states and save them,
-        // current ==> do a map over state an returns the current record for this state.
-        const stateManager = {
-          agreement: ag,
-          get: _get,
-          put: _put,
-          update: _update,
-          current: _current
-        };
-        return resolve(stateManager);
-      }
-    });
-  });
+    const ag = await AgreementModel.findOne({ id: _agreement.id });
+    
+    if (!ag) {
+      throw new ErrorModel(404, 'There is no agreement with id: ' + _agreement.id);
+    }
+    logger.debug('StateManager for agreementID = ' + _agreement.id + ' initialized');
+
+    // Building stateManager object
+    const stateManager = {
+      agreement: ag,
+      get: _get,
+      put: _put,
+      update: _update,
+      current: _current,
+    };
+
+    return stateManager;
+  } catch (err) {
+    logger.error(JSON.stringify(err));
+    throw new ErrorModel(err.code || 500, err.message || err.toString());
+  }
 }
+
 
 /**
  * Gets one or more states by an specific query.
