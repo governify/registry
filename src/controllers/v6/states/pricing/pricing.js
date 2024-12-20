@@ -30,7 +30,7 @@ const logger = governify.getLogger().tag('pricing');
 const stateManager = require('../../../../stateManager/v6/state-manager.js');
 const utils = require('../../../../utils');
 
-const Error = utils.errors.Error;
+const ErrorModel = utils.errors.Error;
 const Query = utils.Query;
 
 /**
@@ -51,32 +51,24 @@ module.exports = {
  * @param {Object} next next function
  * @alias module:pricing.PricingBillingPenaltiesGET
  * */
-function _PricingBillingPenaltiesGET (req, res) {
-  const args = req.swagger.params;
-
-  logger.warn(JSON.stringify(args));
-  const agreementId = args.agreement.value;
+async function _PricingBillingPenaltiesGET (req, res) {
+  const { agreementId } = req.params;
   const query = new Query(req.query);
   logger.info('New request to get pricing state for agreementId = ' + agreementId);
 
-  stateManager({
-    id: agreementId
-  }).then(function (manager) {
+  try{
+    const manager = await stateManager({ id: agreementId });
     const validation = utils.validators.pricingQuery(query);
     if (!validation.valid) {
       logger.error('Query validation error');
-      res.status(400).json(new Error(400, validation));
+      res.status(400).json(new ErrorModel(400, validation));
     } else {
-      manager.get('pricing', query).then(function (data) {
-        logger.info('Sending Pricing-Billing-Penalties state');
-        res.json(data);
-      }, function (err) {
-        logger.info('ERROR: ' + err.message);
-        res.status(err.code).json(err);
-      });
+      const data = await manager.get('pricing', query);
+      logger.info('Sending Pricing-Billing-Penalties state');
+      res.json(data);
     }
-  }, function (err) {
+  } catch(err){
     logger.info('ERROR: ' + err.message);
-    res.status(err.code).json(err);
-  });
+    res.status(err.code).json({error: err.message});
+  }
 }

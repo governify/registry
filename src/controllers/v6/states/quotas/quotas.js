@@ -48,18 +48,24 @@ module.exports = {
  * @param {Object} next next function
  * @alias module:quotas.quotasGET
  * */
-function _quotasGET (args, res) {
+async function _quotasGET (req, res) {
   logger.info('New request to GET quotas');
-  const agreementId = args.agreement.value;
+  const { agreementId } = req.params;
 
-  stateManager({
-    id: agreementId
-  }).get('quotas', function (quotas) {
-    res.json(quotas);
-  }, function (err) {
+  try{
+    const quotas = await stateManager({
+      id: agreementId
+    });
+    quotas.get('quotas', function (quotas) {
+      res.json(quotas);
+    }, function (err) {
+      logger.error(err.message.toString());
+      res.status(err.code || 500).json({ error: err.message });
+    });
+  } catch (err) {
     logger.error(err.message.toString());
-    res.status(err.code).json(err);
-  });
+    res.status(err.code || 500).json({ error: err.message });
+  }
 }
 
 /**
@@ -69,19 +75,27 @@ function _quotasGET (args, res) {
  * @param {Object} next next function
  * @alias module:quotas.quotasQuotaGET
  * */
-function _quotasIdGET (args, res) {
+async function _quotasIdGET (req, res) {
   logger.info('New request to GET quota');
-  const agreementId = args.agreement.value;
-  const quotaId = args.quota.value;
+  const { agreementId, quotaId } = req.params;
 
-  stateManager({
-    id: agreementId
-  }).get('quotas', {
-    id: quotaId
-  }, function (quota) {
-    res.json(quota);
-  }, function (err) {
+  if(!quotaId || typeof quotaId !== 'string' || quotaId.trim() === ''){
+    return res.status(400).json({ error: 'Invalid quotaId' });
+  }
+  try{
+    const quotas = await stateManager({
+      id: agreementId
+    });
+    quotas.get('quotas', {
+      id: quotaId
+    }, function (quota) {
+      res.json(quota);
+    }, function (err) {
+      logger.error(err.message.toString());
+      return res.status(err.code).json({ error: err.message });
+    });
+  } catch (err) {
     logger.error(err.message.toString());
-    res.status(err.code).json(err);
-  });
+    return res.status(err.code || 500).json({ error: err.message });
+  }
 }
