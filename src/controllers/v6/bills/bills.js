@@ -175,13 +175,9 @@ async function _billsGET(req, res) {
  * @param {String} agreementId AgreementId
  * @alias module:bills.getBill
  * */
-function _getBill (agreementId, from) {
+async function _getBill (agreementId, from) {
   const BillsModel = db.models.BillsModel;
-  return BillsModel.findOne({ agreementId: agreementId, 'period.from': from }, function (err) {
-    if (err) {
-      logger.error(err.toString());
-    }
-  });
+  return BillsModel.findOne({ agreementId: agreementId, 'period.from': from });
 }
 
 /**
