@@ -38,13 +38,11 @@ router.delete('/', states.agreements.statesDELETE);
 router.get('/:agreementId', states.agreements.agreementIdGET);
 router.delete('/:agreementId', states.agreements.agreementIdDELETE);
 router.get('/:agreementId/filtered', states.agreements.statesFilter);
-router.get('/:agreementId/reload', states.agreements.agreementIdRELOAD);
 router.delete('/:agreementId/overrides', overrides.statesAgreementOverridesDELETE);
 
 // Agreements Guarantees
-router.get('/:agreementId/guarantees', states.guarantees.guaranteesGET);
-router.get('/:agreementId/guarantees/:guaranteeId', states.guarantees.guaranteeIdGET);
-router.get('/:agreementId/guarantees/:guaranteeId/penalty', states.guarantees.guaranteeIdPenaltyGET);
+router.get('/:agreementId/guarantees', states.guarantees.guaranteesGET); // TODO: Test positives
+router.get('/:agreementId/guarantees/:guaranteeId', states.guarantees.guaranteeIdGET); // TODO: Test positives
 router.get('/:agreementId/guarantees/:guaranteeId/overrides', overrides.statesAgreementGuaranteesGuaranteeOverridesGET);
 router.post('/:agreementId/guarantees/:guaranteeId/overrides', overrides.statesAgreementGuaranteesGuaranteeOverridesPOST);
 router.delete('/:agreementId/guarantees/:guaranteeId/overrides', overrides.statesAgreementGuaranteesGuaranteeOverridesDELETE);
