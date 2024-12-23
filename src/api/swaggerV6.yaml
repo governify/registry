@@ -335,32 +335,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorModel'
-
-  /states/{agreementId}/reload:
-    get:
-      tags:
-        - agreement-states
-      description: XXX
-      parameters:
-        - name: agreementId
-          in: path
-          description: XXX
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                type: string
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorModel'
   
   /states/{agreementId}/overrides:
     delete:
@@ -581,35 +555,6 @@ paths:
           description: XXX
           required: false
           type: boolean
-      responses:
-        '200':
-          description: Success
-          schema:
-            type: array
-            items:
-              $ref: '#/components/schemas/GuaranteeState'
-        '400':
-          description: Bad request
-          schema:
-            $ref: '#/components/schemas/ErrorModel'
-  /states/{agreementId}/guarantees/{guaranteeId}/penalty:
-    get:
-      tags:
-        - guarantees-states
-      description: >-
-        ** PLEASE NOTE: Currently, this method is only supported over Guarantees
-        defined with a MONTHLY period **
-      parameters:
-        - name: agreementId
-          in: path
-          description: XXX
-          required: true
-          type: string
-        - name: guaranteeId
-          in: path
-          description: XXX
-          required: true
-          type: string
       responses:
         '200':
           description: Success

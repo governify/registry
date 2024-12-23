@@ -29,11 +29,6 @@ const governify = require('governify-commons');
 const logger = governify.getLogger().tag('agreement-state-manager');
 const db = require('../../../../database');
 const stateManager = require('../../../../stateManager/v6/state-manager.js');
-const mailer = require('../../../../utils/mailer');
-const calculators = require('../../../../stateManager/v6/calculators.js');
-
-const Promise = require('bluebird');
-const request = require('request');
 const JSONStream = require('JSONStream');
 
 /**
@@ -50,7 +45,6 @@ const JSONStream = require('JSONStream');
 module.exports = {
   agreementIdGET: _agreementIdGET,
   agreementIdDELETE: _agreementIdDELETE,
-  agreementIdRELOAD: _agreementIdRELOAD,
   statesDELETE: _statesDELETE,
   guaranteesGET: require('../guarantees/guarantees.js').guaranteesGET,
   guaranteeIdGET: require('../guarantees/guarantees.js').guaranteeIdGET,
@@ -234,128 +228,4 @@ function _statesFilter (req, res) {
     .exec()
     .pipe(JSONStream.stringify())
     .pipe(res);
-}
-
-/**
- * Reload an agreement state by agreement ID.
- * @param {Object} args {agreement: String, from: String, to: String}
- * @param {Object} res response
- * @param {Object} next next function
- * @alias module:agreements.agreementIdRELOAD
- * */
-function _agreementIdRELOAD (args, res) {
-  const agreementId = args.agreements.value;
-  const parameters = args.parameters.value;
-
-  logger.info('New request to reload state of agreement ' + agreementId);
-
-  const StateModel = db.models.StateModel;
-  StateModel.find({
-    agreementId: agreementId
-  }).remove(function (err) {
-    const errors = [];
-    if (!err) {
-      const message = 'Reloading state of agreement ' + agreementId + '. ' +
-                (parameters.mail ? 'An email will be sent to ' + parameters.mail.to + ' when the process ends' : '');
-      res.end(message);
-
-      logger.info('Deleted state for agreement ' + agreementId);
-
-      const AgreementModel = db.models.AgreementModel;
-      AgreementModel.findOne({
-        id: agreementId
-      }, function (err, agreement) {
-        if (err) {
-          logger.error(err.toString());
-          errors.push(err);
-        }
-        stateManager({
-          id: agreementId
-        }).then(function (manager) {
-          logger.info('Calculating agreement state...');
-          calculators.agreementCalculator.process(manager, parameters.requestedState).then(function () {
-            logger.debug('Agreement state has been calculated successfully');
-            if (errors.length > 0) {
-              logger.error('Agreement state reload has been finished with ' + errors.length + ' errors: \n' + JSON.stringify(errors));
-            } else {
-              logger.info('Agreement state reload has been finished successfully');
-
-              if (parameters.mail) {
-                sendMail(agreement, parameters.mail);
-              }
-            }
-          }, function (err) {
-            logger.error(err.message.toString());
-            errors.push(err);
-          });
-        }, function (err) {
-          logger.error(err.message.toString());
-          errors.push(err);
-        });
-      });
-    } else {
-      logger.error("Can't delete state for agreement " + agreementId + ' :' + err);
-      errors.push(err);
-    }
-  });
-}
-
-/**
- * Send an email.
- * @function sendMail
- * @param {Object} agreement agreement
- * @param {Object} mail mail parameters
- * */
-function sendMail (agreement, mail) {
-  logger.info('Sending email to ' + mail.to);
-
-  const logRequests = [];
-  for (const logId in agreement.context.definitions.logs) {
-    const log = agreement.context.definitions.logs[logId];
-    log.id = logId;
-    logRequests.push(log);
-  }
-
-  const logStates = [];
-  Promise.each(logRequests, function (log) {
-    return new Promise(function (resolve, reject) {
-      process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-      request.get({
-        uri: log.stateUri
-      }, function (err, response, body) {
-        if (err) {
-          logger.error(err);
-          return reject(err);
-        }
-        logStates.push({
-          id: log.id,
-          state: body
-        });
-        return resolve();
-      });
-    });
-  }).then(function () {
-    if (logStates.length > 0) {
-      mail.content += '<ul>';
-      logStates.forEach(function (logState) {
-        mail.content += '<li>' + logState.id + ' (' + logState.state + ')</li>';
-      });
-      mail.content += '<ul/>';
-    }
-
-    const mailOptions = {
-      from: mail.from,
-      to: mail.to,
-      subject: mail.subject,
-      html: mail.content
-    };
-
-    mailer.sendMail(mailOptions, function (error) {
-      if (error) {
-        return logger.error(error);
-      }
-      logger.info('Email to ' + mail.to + ' has been sent');
-      logger.info('Summer is coming');
-    });
-  });
 }
