@@ -37,18 +37,12 @@ const JSONStream = require('JSONStream');
  * @see module:states
  * @requires config
  * @requires stateManager
- * @requires mailer
- * @requires calculators
- * @requires bluebird
  * @requires request
  * */
 module.exports = {
   agreementIdGET: _agreementIdGET,
   agreementIdDELETE: _agreementIdDELETE,
   statesDELETE: _statesDELETE,
-  guaranteesGET: require('../guarantees/guarantees.js').guaranteesGET,
-  guaranteeIdGET: require('../guarantees/guarantees.js').guaranteeIdGET,
-  guaranteeIdPagGET: require('../guarantees/guarantees.js').guaranteeIdPagGET,
   statesFilter: _statesFilter
 };
 
@@ -59,23 +53,21 @@ module.exports = {
  * @param {Object} next next function
  * @alias module:agreements.agreementIdGET
  * */
-function _agreementIdGET (args, res) {
+async function _agreementIdGET (req, res) {
   logger.info('New request to GET agreements (states/agreements/agreements.js)');
-  const agreementId = args.agreement.value;
-
-  stateManager({
-    id: agreementId
-  }).then(function (manager) {
+  const { agreementId } = req.params;
+  try{
+    const manager = await stateManager({id: agreementId});
     manager.get(agreementId).then(function (agreement) {
       res.json(agreement);
     }, function (err) {
       logger.error(err.message.toString());
       res.status(err.code).json(err);
     });
-  }, function (err) {
+  } catch (err) {
     logger.error(err.message.toString());
-    res.status(err.code).json(err);
-  });
+    return res.status(err.code || 500).json({ error: err.message });
+  }
 }
 
 /**
@@ -85,35 +77,36 @@ function _agreementIdGET (args, res) {
  * @param {Object} next next function
  * @alias module:agreements.agreementIdDELETE
  * */
-function _agreementIdDELETE (args, res) {
-  const agreementId = args.agreement.value;
+async function _agreementIdDELETE(req, res) {
+  const { agreementId } = req.params;
   logger.info('New request to DELETE agreement state for agreement ' + agreementId);
-  if (agreementId) {
+
+  if (!agreementId) {
+    logger.warn("Can't delete state for agreement: Missing agreementId");
+    return res.status(400).send({ message: "Can't delete state for agreement: Missing agreementId" });
+  }
+
+  try {
     const StateModel = db.models.StateModel;
-    StateModel.remove({
-      agreementId: agreementId
-    }, function (err) {
-      if (!err) {
-        const BillsModel = db.models.BillsModel; // Remove bills from that agreement
-        BillsModel.remove({
-          agreementId: agreementId
-        }, function (err) {
-          if (!err) {
-            logger.info('Deleted bills for agreement ' + agreementId);
-          } else {
-            logger.warn("Can't delete bills for agreement " + agreementId + ' :' + err);
-          }
-        });
-        res.sendStatus(200);
-        logger.info('Deleted state for agreement ' + agreementId);
-      } else {
-        res.sendStatus(404);
-        logger.warn("Can't delete state for agreement " + agreementId + ' :' + err);
-      }
-    });
-  } else {
-    res.sendStatus(400);
-    logger.warn("Can't delete state for agreement " + agreementId);
+    const BillsModel = db.models.BillsModel;
+
+    const stateResult = await StateModel.deleteOne({ agreementId });
+
+    if (stateResult.deletedCount === 0) {
+      logger.warn('No state found to delete for agreement ' + agreementId);
+      return res.status(404).send({ message: 'No state found to delete for agreement ' + agreementId });
+    }
+
+    logger.info('Deleted state for agreement ' + agreementId);
+
+    // Delete bills associated with the agreement
+    const billsResult = await BillsModel.deleteMany({ agreementId });
+    logger.info(`Deleted ${billsResult.deletedCount} bills for agreement ` + agreementId);
+
+    return res.sendStatus(200);
+  } catch (error) {
+    logger.error('Error while deleting state or bills for agreement ' + agreementId + ': ' + error.message);
+    return res.status(500).send({ message: 'Error while deleting state or bills for agreement ' + agreementId + ': ' + error.message });
   }
 }
 
@@ -124,18 +117,17 @@ function _agreementIdDELETE (args, res) {
  * @param {Object} next next function
  * @alias module:agreements.statesDELETE
  * */
-function _statesDELETE (args, res) {
+async function _statesDELETE (req, res) {
   logger.info('New request to DELETE all agreement states');
   const StateModel = db.models.StateModel;
-  StateModel.remove(function (err) {
-    if (!err) {
-      res.sendStatus(200);
-      logger.info('Deleted state for all agreements');
-    } else {
-      res.sendStatus(404);
-      logger.warn("Can't delete state for all agreements: " + err);
-    }
-  });
+  try{
+    await StateModel.deleteMany({});
+    res.sendStatus(200);
+    logger.info('Deleted state for all agreements');
+  } catch (err) {
+    res.status(404).send({ message: "Can't delete state for all agreements: " + err.message });
+    logger.warn("Can't delete state for all agreements: " + err.message);
+  }
 }
 
 /**
@@ -145,87 +137,76 @@ function _statesDELETE (args, res) {
  * @param {Object} next next function
  * @alias module:agreements.statesFilter
  * */
-function _statesFilter (req, res) {
+async function _statesFilter(req, res) {
   logger.info('New request to GET filtered agreements states (states/agreements/agreements.js) with params: ' + JSON.stringify(req.query));
 
-  const agreementId = req.swagger.params.agreement.value;
+  const { agreementId } = req.params;
   const indicator = req.query.indicator;
   const type = req.query.type;
   const from = req.query.from;
   const to = req.query.to;
   const at = req.query.at;
 
-  // Recreate scopes object
-  const scopeQuery = {};
-  let groupQuery = {};
-  for (const property in req.query) {
-    if (property.startsWith('scope.')) {
-      if (req.query[property] === '*') {
-        scopeQuery[property] = {
-          $exists: true
-        };
-      } else {
-        if (req.query[property] === NaN) {
-          scopeQuery[property] = {
+  try {
+    // Recreate scopes object
+    const scopeQuery = {};
+    let groupQuery = {};
 
-            $eq: req.query[property]
-          };
+    for (const property in req.query) {
+      if (property.startsWith('scope.')) {
+        if (req.query[property] === '*') {
+          scopeQuery[property] = { $exists: true };
         } else {
-          scopeQuery[property] = {
-
-            $eq: parseInt(req.query[property])
-          };
+          const parsedValue = parseInt(req.query[property], 10);
+          scopeQuery[property] = isNaN(parsedValue)
+            ? { $eq: req.query[property] }
+            : { $eq: parsedValue };
         }
+
+        groupQuery = {
+          $group: {
+            _id: `$${property}`,
+            evidences: { $push: '$records.evidences' },
+          },
+        };
       }
+    }
+    const StateModel = db.models.StateModel;
+    const andQuery = {
+      agreementId: { $eq: agreementId },
+      id: { $eq: indicator },
+      stateType: { $eq: type },
+      'period.from': { $eq: from || at },
+    };
 
-      groupQuery = {
-        $group: { _id: '$' + property, evidences: { $push: '$records.evidences' } }
-      };
+    if (to) {
+      andQuery['period.to'] = { $eq: to };
+    }
+    Object.assign(andQuery, scopeQuery); // Merge scope properties into the query
+    const aggregationPipeline = [
+      { $match: { $and: [andQuery] } },
+      { $unwind: '$records' },
+    ];
+
+    if (Object.keys(groupQuery).length > 0) {
+      aggregationPipeline.push(groupQuery);
+    }
+    const results = await StateModel.aggregate(aggregationPipeline).allowDiskUse(true).exec();
+
+    if (results.length === 0) {
+      logger.warn(`No states found for agreementId: ${agreementId}`);
+      return res.status(404).send({ message: `No states found for agreementId: ${agreementId}` });
+    }
+    // Stream the results to the response
+    JSONStream.stringify()(results).pipe(res);
+
+  } catch (err) {
+    if (err.name === 'ValidationError' || err.name === 'CastError') {
+      res.status(400).send({ message: `Invalid request: ${err.message}` });
+      logger.warn(`Invalid request: ${err.message}`);
+    } else {
+      res.status(500).send({ message: `Unexpected error: ${err.message}` });
+      logger.error(`Unexpected error: ${err.message}`);
     }
   }
-
-  const StateModel = db.models.StateModel;
-
-  const andQuery = {
-    agreementId: {
-      $eq: agreementId
-    },
-    id: {
-      $eq: indicator
-    },
-    stateType: {
-      $eq: type
-    },
-    'period.from': {
-      $eq: from || at
-    }
-
-  };
-
-  if (to) {
-    Object.assign(andQuery, {
-      'period.to': {
-        $eq: to
-      }
-    });
-  }
-
-  Object.assign(andQuery, scopeQuery); // Concat scope properties to the query
-
-  StateModel.aggregate([{
-    $match: {
-      $and: [andQuery]
-    }
-  },
-  {
-    $unwind: '$records'
-  }
-    //, groupQuery?groupQuery:{}
-
-  ])
-    .allowDiskUse(true)
-    .cursor()
-    .exec()
-    .pipe(JSONStream.stringify())
-    .pipe(res);
 }
