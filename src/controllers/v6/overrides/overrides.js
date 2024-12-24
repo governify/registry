@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 'use strict';
 const governify = require('governify-commons');
 const logger = governify.getLogger().tag('overrides');
-const $RefParser = require('json-schema-ref-parser');
+const $RefParser = require('@apidevtools/json-schema-ref-parser');
 const db = require('../../../database');
 const ErrorModel = require('../../../errors/index.js').errorModel;
 const bills = require('../bills/bills');
