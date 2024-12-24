@@ -2,7 +2,7 @@
 
 const governify = require('governify-commons');
 const logger = governify.getLogger().tag('template-manager');
-const $RefParser = require('json-schema-ref-parser');
+const $RefParser = require('@apidevtools/json-schema-ref-parser');
 const db = require('../../../database');
 const ErrorModel = require('../../../errors/index.js').errorModel;
 

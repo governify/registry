@@ -17,6 +17,7 @@
   "license": "GPL-2.0",
   "private": true,
   "dependencies": {
+    "@apidevtools/json-schema-ref-parser": "11.7.3",
     "@oas-tools/oas-telemetry": "0.5.1",
     "ajv": "8.17.1",
     "bluebird": "3.7.2",
@@ -29,7 +30,6 @@
     "governify-commons": "1.19.0",
     "helmet": "8.0.0",
     "js-yaml": "4.1.0",
-    "json-schema-ref-parser": "9.0.9",
     "JSONStream": "1.3.5",
     "moment-timezone": "0.5.46",
     "mongoose": "8.9.2",

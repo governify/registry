@@ -31,7 +31,7 @@ const logger = governify.getLogger().tag('db-manager');
 const jsyaml = require('js-yaml');
 const fs = require('fs');
 const mongoose = require('mongoose');
-const $RefParser = require('json-schema-ref-parser');
+const $RefParser = require('@apidevtools/json-schema-ref-parser');
 const nodeEnv= process.env.NODE_ENV;
 const memoryDB = getMemoryDB(nodeEnv);
 
