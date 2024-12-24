@@ -9,7 +9,7 @@ services:
     networks:
       - registry-network
     ports:
-      - "5001:27017"
+      - "5010:27017"
     volumes:
       - registry-data:/data/db
 
@@ -22,7 +22,7 @@ services:
     environment:
       - PORT=5400
       - NODE_ENV=development
-      - API_PREFIX=%{API_PREFIX}
+      - API_PREFIX=${API_PREFIX}
       - MONGOPASS=${MONGOPASS}
       - MONGOADMIN=${MONGOADMIN}
       - HTTPS_SERVER=${HTTPS_SERVER}
@@ -31,7 +31,7 @@ services:
     networks:
       - registry-network
     ports:
-      - "5400:5400"
+      - "3400:5400"
 
 volumes:
   registry-data:

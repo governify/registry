@@ -272,7 +272,7 @@ paths:
       parameters:
         - name: agreementId
           in: path
-          description: XXX
+          description: Agreement identifier.
           required: true
           schema:
             type: string
@@ -296,7 +296,7 @@ paths:
       parameters:
         - name: agreementId
           in: path
-          description: XXX
+          description: Agreement identifier.
           required: true
           schema:
             type: string
@@ -318,10 +318,43 @@ paths:
       parameters:
         - name: agreementId
           in: path
-          description: XXX
+          description: Agreement identifier.
           required: true
           schema:
             type: string
+        - name: indicator
+          in: query
+          description: State identifier.
+          required: false
+          schema:
+            type: string
+        - name: type
+          in: query
+          description: The state type.
+          required: false
+          schema:
+            type: string
+        - name: from
+          in: query
+          description: Start date for filtering.
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          description: End date for filtering.
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: at
+          in: query
+          description: A specific timestamp for filtering.
+          required: false
+          schema:
+            type: string
+            format: date-time
       responses:
         '200':
           description: Success
@@ -344,7 +377,7 @@ paths:
       parameters:
         - name: agreementId
           in: path
-          description: XXX
+          description: Agreement identifier.
           required: true
           type: string
       responses:
@@ -366,7 +399,7 @@ paths:
       parameters:
         - name: agreementId
           in: path
-          description: XXX
+          description: Agreement identifier.
           required: true
           schema:
             type: string
@@ -392,7 +425,7 @@ paths:
       parameters:
         - name: agreementId
           in: path
-          description: XXX
+          description: Agreement identifier.
           required: true
           schema:
             type: string
@@ -422,7 +455,7 @@ paths:
       parameters:
         - name: agreementId
           in: path
-          description: XXX
+          description: Agreement identifier.
           required: true
           schema:
             type: string
@@ -461,7 +494,7 @@ paths:
       parameters:
         - name: agreementId
           in: path
-          description: XXX
+          description: Agreement identifier.
           required: true
           schema:
             type: string
@@ -500,7 +533,7 @@ paths:
       parameters:
         - name: agreementId
           in: path
-          description: XXX
+          description: Agreement identifier.
           required: true
           type: string
       responses:
@@ -522,7 +555,7 @@ paths:
       parameters:
         - name: agreementId
           in: path
-          description: XXX
+          description: Agreement identifier.
           required: true
           type: string
         - name: guaranteeId
@@ -677,7 +710,7 @@ paths:
       parameters:
         - name: agreementId
           in: path
-          description: XXX
+          description: Agreement identifier.
           required: true
           type: string
       responses:
@@ -698,7 +731,7 @@ paths:
       parameters:
         - name: agreementId
           in: path
-          description: XXX
+          description: Agreement identifier.
           required: true
           type: string
       responses:
@@ -718,7 +751,7 @@ paths:
       parameters:
         - name: agreementId
           in: path
-          description: XXX
+          description: Agreement identifier.
           required: true
           type: string
         - name: quotaId
@@ -744,7 +777,7 @@ paths:
       parameters:
         - name: agreementId
           in: path
-          description: XXX
+          description: Agreement identifier.
           required: true
           type: string
       responses:
@@ -764,7 +797,7 @@ paths:
       parameters:
         - name: agreementId
           in: path
-          description: XXX
+          description: Agreement identifier.
           required: true
           type: string
         - name: rateId

@@ -32,7 +32,8 @@ const jsyaml = require('js-yaml');
 const fs = require('fs');
 const mongoose = require('mongoose');
 const $RefParser = require('json-schema-ref-parser');
-const memoryDB = require('./MemoryServer');
+const nodeEnv= process.env.NODE_ENV;
+const memoryDB = getMemoryDB(nodeEnv);
 
 /**
  * Database module.
@@ -143,4 +144,12 @@ function setupModel (instance, modelName, jsonModelUri,indexableParams) {
     const mongooseModel = mongoose.model(modelName, mongooseSchema);
     instance.models[modelName] = mongooseModel;
   });
+}
+
+
+function getMemoryDB(env) {
+  if (env === 'ci') {
+    return require('./MemoryServer');
+  }
+  return null;
 }

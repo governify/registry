@@ -1,6 +1,6 @@
 database:
   host: localhost
-  port: 5001  
+  port: 5010  
   name: registry
 email:
   defaultMailFrom: '"ISA-Group" <no-reply@isa.us.es>'
