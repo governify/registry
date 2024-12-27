@@ -73,7 +73,7 @@ function _deploy(configurations, expressMiddlewares, callback) {
   const swaggerUtils = require('./src/utils').swagger;
 
   const API_PREFIX = process.env.API_PREFIX || '/api/v6';
-  // const agreementRegistry = require('./src/controllers/v6/AgreementRegistry.js');
+  const agreementRouter = require('./src/routes/v6/AgreementRouter.js');
   const billRouter = require('./src/routes/v6/BillRouter.js');
   const stateRouter = require('./src/routes/v6/StateRouter.js');
   const templateRouter = require('./src/routes/v6/TemplateRouter.js');
@@ -171,7 +171,7 @@ function _deploy(configurations, expressMiddlewares, callback) {
   
     logger.info('Initializing app after db connection');
 
-    // app.use(`${API_PREFIX}/agreements`, agreementRegistry);
+    app.use(`${API_PREFIX}/agreements`, agreementRouter);
     app.use(`${API_PREFIX}/bills`, billRouter);
     app.use(`${API_PREFIX}/states`, stateRouter);
     app.use(`${API_PREFIX}/templates`, templateRouter);
