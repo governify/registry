@@ -27,7 +27,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 const governify = require('governify-commons');
 const logger = governify.getLogger().tag('agreement-manager');
-const $RefParser = require('@apidevtools/json-schema-ref-parser');
 const db = require('../../../database');
 
 const states = require('../states/states');
@@ -52,9 +51,7 @@ module.exports = {
   agreementsDELETE: _agreementsDELETE,
   agreementsGET: _agreementsGET,
   agreementIdGET: _agreementIdGET,
-  agreementIdDELETE: _agreementIdDELETE,
-  agreementsAgreementTermsGuaranteesGET: _agreementsAgreementTermsGuaranteesGET,
-  agreementsAgreementTermsGuaranteesGuaranteeGET: _agreementsAgreementTermsGuaranteesGuaranteeGET
+  agreementIdDELETE: _agreementIdDELETE
 };
 
 /**
@@ -64,42 +61,51 @@ module.exports = {
  * @param {Object} next next function
  * @alias module:agreement.agreementsPOST
  * */
-function _agreementsPOST (args, res) {
+async function _agreementsPOST(req, res) {
   logger.info('New request to CREATE agreement');
-  $RefParser.dereference(args.agreement.value, function (err, schema) {
-    if (err) {
-      logger.error(err.toString());
-      res.status(500).json(new ErrorModel(500, err));
-    } else {
-      const agreement = new db.models.AgreementModel(schema);
-      agreement.save(function (err) {
-        if (err) {
-          logger.error('Mongo error saving agreement: ' + err.toString());
-          res.status(500).json(new ErrorModel(500, err));
-        } else {
-          logger.info('New agreement saved successfully!');
-          logger.info('Initializing agreement state');
-          // Initialize state
-          agreementManager.initializeState(schema, function (st) {
-            const state = new db.models.StateModel(st);
-            state.save(function (err) {
-              if (err) {
-                logger.error('Mongo error saving state: ' + err.toString());
-                res.status(500).json(new ErrorModel(500, err));
-              } else {
-                logger.info('State initialized successfully!');
-                res.sendStatus(200);
-              }
-            });
-          }, function (err) {
-            logger.error('Mongo error saving state: ' + err.toString());
-            res.status(500).json(new ErrorModel(500, err));
-          });
-        }
-      });
+  const { id } = req.body;
+
+  try {
+    let agreement = await db.models.AgreementModel.findOne({ id: id });
+    if (agreement) {
+      logger.warn('Agreement already exists');
+      return res.status(409).json(new ErrorModel(409, 'Agreement already exists'));
     }
-  });
+
+    agreement = new db.models.AgreementModel(req.body);
+    await agreement.save();
+    logger.info('New agreement saved successfully!');
+    logger.info('Initializing agreement state');
+
+    // Initialize state
+    agreementManager.initializeState(
+      req.body,
+      async (st) => {
+        await saveState(st, res); // Delegated state saving to a separate function
+      },
+      (err) => {
+        logger.error('Error initializing state: ' + err.toString());
+        res.status(500).json(new ErrorModel(500, err));
+      }
+    );
+  } catch (err) {
+    logger.error(err.toString());
+    res.status(500).json(new ErrorModel(500, err));
+  }
 }
+
+async function saveState(stateData, res) {
+  const state = new db.models.StateModel(stateData);
+  try {
+    await state.save();
+    logger.info('State initialized successfully!');
+    res.sendStatus(200);
+  } catch (err) {
+    logger.error('Mongo error saving state: ' + err.toString());
+    res.status(500).json(new ErrorModel(500, err));
+  }
+}
+
 
 /**
  * Delete all agreements.
@@ -108,18 +114,17 @@ function _agreementsPOST (args, res) {
  * @param {Object} next next function
  * @alias module:agreement.agreementsDELETE
  * */
-function _agreementsDELETE (args, res) {
+async function _agreementsDELETE (req, res) {
   logger.info('New request to DELETE all agreements');
-  const AgreementModel = db.models.AgreementModel;
-  AgreementModel.remove({}, function (err) {
-    if (!err) {
-      logger.info('Deleted all agreements');
-      states.agreements.statesDELETE(args, res);
-    } else {
-      res.sendStatus(404);
-      logger.warn("Can't delete all agreements: " + err);
-    }
-  });
+  try {
+    await db.models.AgreementModel.deleteMany({});
+    logger.info('Deleted all agreements');
+    states.agreements.statesDELETE(req, res);
+    res.sendStatus(200);
+  } catch (err) {
+    logger.error("Can't delete all agreements: " + err.toString());
+    res.status(500).json(new ErrorModel(500, err));
+  }
 }
 
 /**
@@ -129,21 +134,20 @@ function _agreementsDELETE (args, res) {
  * @param {Object} next next function
  * @alias module:agreement.agreementsGET
  * */
-function _agreementsGET (args, res) {
+async function _agreementsGET (req, res) {
   /**
      * parameters expected in the args:
      * namespace (String)
      **/
-  logger.info('New request to GET agreements agreements/agreements.js');
-  const AgreementModel = db.models.AgreementModel;
-  AgreementModel.find(function (err, agreements) {
-    if (err) {
-      logger.error(err.toString());
-      res.status(500).json(new ErrorModel(500, err));
-    }
+  try{
+    logger.info('New request to GET agreements agreements/agreements.js');
+    const agreements = await db.models.AgreementModel.find();
     logger.info('Agreements returned');
     res.status(200).json(agreements);
-  });
+  } catch (err) {
+    logger.error(err.toString());
+    res.status(500).json(new ErrorModel(500, err));
+  }
 }
 
 /**
@@ -153,25 +157,21 @@ function _agreementsGET (args, res) {
  * @param {Object} next next function
  * @alias module:agreement.agreementIdGET
  * */
-function _agreementIdGET (args, res) {
-  logger.info('New request to GET agreement with id = ' + args.agreement.value);
-  const AgreementModel = db.models.AgreementModel;
-  AgreementModel.findOne({
-    id: args.agreement.value
-  }, function (err, agreement) {
-    if (err) {
-      logger.error(err.toString());
-      return res.status(500).json(new ErrorModel(500, err));
-    }
-
+async function _agreementIdGET (req, res) {
+  const {agreementId } = req.params;
+  logger.info('New request to GET agreement with id = ' + agreementId);
+  try {
+    const agreement = await db.models.AgreementModel.findOne({ id: agreementId });
     if (!agreement) {
-      logger.warn('There is no agreement with id: ' + args.agreement.value);
-      return res.status(404).json(new ErrorModel(404, 'There is no agreement with id: ' + args.agreement.value));
+      logger.warn('There is no agreement with id: ' + agreementId);
+      return res.status(404).json(new ErrorModel(404, 'There is no agreement with id: ' + agreementId));
     }
-
     logger.info('Agreement returned');
     res.status(200).json(agreement);
-  });
+  } catch (err) {
+    logger.error(err.toString());
+    res.status(500).json(new ErrorModel(500, err));
+  }
 }
 
 /**
@@ -181,74 +181,20 @@ function _agreementIdGET (args, res) {
  * @param {Object} next next function
  * @alias module:agreement.agreementIdDELETE
  * */
-function _agreementIdDELETE (args, res) {
+async function _agreementIdDELETE (req, res) {
   logger.info('New request to DELETE agreement');
-  const agreementId = args.agreement.value;
-  if (agreementId) {
-    const AgreementModel = db.models.AgreementModel;
-    AgreementModel.remove({
-      id: agreementId
-    }, function (err) {
-      if (!err) {
-        logger.info('Deleted agreement with id ' + agreementId);
-        args.agreements = args.agreement;
-        states.agreements.agreementIdDELETE(args, res);
-      } else {
-        res.sendStatus(404);
-        logger.warn("Can't delete agreement with id " + agreementId);
-      }
-    });
-  } else {
-    res.sendStatus(400);
-    logger.warn("Can't delete agreement with id " + agreementId);
+  const { agreementId } = req.params;
+
+  try {
+    const agreement = await db.models.AgreementModel.deleteOne({ id: agreementId });
+    if (agreement.deletedCount === 0) {
+      logger.warn('There is no agreement with id: ' + agreementId);
+      return res.status(404).json(new ErrorModel(404, 'There is no agreement with id: ' + agreementId));
+    }
+    logger.info('Agreement deleted');
+    res.sendStatus(200);
+  } catch (err) {
+    logger.error(err.toString());
+    res.status(500).json(new ErrorModel(500, err));
   }
-}
-
-/**
- * Get all agreement terms.
- * @param {Object} args {}
- * @param {Object} res response
- * @param {Object} next next function
- * @alias module:agreement.agreementsAgreementTermsGuaranteesGET
- * */
-function _agreementsAgreementTermsGuaranteesGET (args, res) {
-  const AgreementModel = db.models.AgreementModel;
-  AgreementModel.find({
-    id: args.agreement.value
-  }, function (err, agreement) {
-    if (err) {
-      console.error(err);
-      res.end();
-    }
-    if (agreement.length === 1) {
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify(agreement[0].terms.guarantees));
-    }
-  });
-}
-
-/**
- * Get all agreement guarantees.
- * @param {Object} args {agreement: String, guarantee: String}
- * @param {Object} res response
- * @param {Object} next next function
- * @alias module:agreement.agreementsAgreementTermsGuaranteesGuaranteeGET
- * */
-function _agreementsAgreementTermsGuaranteesGuaranteeGET (args, res) {
-  const AgreementModel = db.models.AgreementModel;
-  AgreementModel.find({
-    id: args.agreement.value
-  }, function (err, agreement) {
-    if (err) {
-      logger.error(err);
-      res.end();
-    }
-    if (agreement.length === 1) {
-      const guarantee = agreement[0].terms.guarantees.filter(function (guarantee) {
-        return guarantee.id === args.guarantee.value;
-      });
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify(guarantee));
-    }
-  });
 }
