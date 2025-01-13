@@ -26,18 +26,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 'use strict';
 
 const governify = require('governify-commons');
-const config = governify.configurator.getConfig('main');
 const logger = governify.getLogger().tag('state-manager');
 
 const db = require('../../database');
 const ErrorModel = require('../../errors/index.js').errorModel;
 const calculators = require('./calculators.js');
 
-const Promise = require('bluebird');
 // const request = require('requestretry');
 // const iso8601 = require('iso8601');
-const utils = require('../../utils');
-const promiseErrorHandler = utils.errors.promiseErrorHandler;
 
 /**
  * State manager module.
@@ -100,338 +96,192 @@ async function initialize(_agreement) {
  * @param {StateManagerQuery} query query will be matched with an state.
  * @return {Promise} Promise that will return an array of state objects
  * */
-function _get (stateType, query, forceUpdate) {
+async function _get(stateType, query = {}, forceUpdate) {
   const stateManager = this;
-  logger.debug('(_get) Retrieving state of ' + stateType + ' - ForceUpdate: ' + forceUpdate);
-  return new Promise(function (resolve, reject) {
-    logger.debug('Getting ' + stateType + ' state for query =  ' + JSON.stringify(query));
+  logger.debug(`(_get) Retrieving state of ${stateType} - ForceUpdate: ${forceUpdate}`);
+
+  try {
+    logger.debug(`Getting ${stateType} state for query = ${JSON.stringify(query)}`);
+
     const StateModel = db.models.StateModel;
-    if (!query) {
-      query = {};
+    const refinedQuery = projectionBuilder(
+      stateType,
+      refineQuery(stateManager.agreement.id, stateType, query)
+    );
+
+    const result = await StateModel.find(refinedQuery);
+
+    if (result.length > 0) {
+      logger.debug(`Found ${stateType} state for query = ${JSON.stringify(query)} in DB`);
+      logger.debug(`Refreshing states of ${stateType}`);
+
+      const states = await stateManager.update(stateType, query, forceUpdate);
+      return states;
+    } else {
+      logger.debug(`No ${stateType} state found for query = ${JSON.stringify(query)} in DB`);
+      logger.debug(`Adding states of ${stateType}`);
+
+      const states = await stateManager.update(stateType, query, forceUpdate);
+      return states;
     }
-    // Executes a mongodb query to search States file that match with query
-    // projectionBuilder(...) builds a mongodb query from StateManagerQuery
-    // refineQuery(...) ensures that the query is well formed, chooses and renames fields to make a well formed query.
-    StateModel.find(projectionBuilder(stateType, refineQuery(stateManager.agreement.id, stateType, query)), function (err, result) {
-      if (err) {
-        // something fail on mongodb query and error is returned
-        logger.debug(JSON.stringify(err));
-        return reject(new ErrorModel(500, 'Error while retrieving %s states: %s', stateType, err.toString()));
-      }
-      // If there are states in mongodb match the query, checks if it's updated and returns.
-      if (result.length > 0) {
-        logger.debug('There are ' + stateType + ' state for query =  ' + JSON.stringify(query) + ' in DB');
-        const states = result;
-
-        logger.debug('Checking if ' + stateType + ' is updated...');
-        //  isUpdated(stateManager.agreement, states).then(function (data) {
-
-        //     logger.debug("Updated: " + (data.isUpdated ? 'YES' : 'NO') + "[forceUpdate: " + forceUpdate + "]");
-
-        // if (data.isUpdated &&! forceUpdate) {
-        //     //States are updated, returns.
-        //     logger.debug("Returning state of " + stateType);
-        //     return resolve(states);
-        // } else {
-        // States are updated, returns.
-        logger.debug('Refreshing states of ' + stateType);
-        stateManager.update(stateType, query, 0, forceUpdate).then(function (states) { // Change 0 with (data.logState) in case of using DB system.
-          return resolve(states);
-        }, function (err) {
-          return reject(err);
-        });
-        //     }
-        // }, function (err) {
-        //     logger.debug(JSON.stringify(err));
-        //     return reject(new ErrorModel(500, "Error while checking if " + stateType + " is is updated: " + err));
-        // });
-      } else {
-        logger.debug('There are not ' + stateType + ' state for query =  ' + JSON.stringify(query) + ' in DB');
-        logger.debug('Adding states of ' + stateType);
-        // isUpdated(stateManager.agreement).then(function (data) {
-        // if (data.isUpdated) {
-        //     logger.debug("There is no state for this metric. Returning initial values.");
-        //     var newState = new State(0, query, {});
-        //     return resolve([newState]);
-        // } else {
-        stateManager.update(stateType, query, 0, forceUpdate).then(function (states) {
-          return resolve(states);
-        }).catch(function (err) {
-          const errorString = 'Error getting metrics';
-          return promiseErrorHandler(reject, 'state-manager', '_get', 500, errorString, err);
-        });
-        // }
-        // }, function (err) {
-        //     logger.debug(JSON.stringify(err));
-        //     return reject(new ErrorModel(500, "Error while checking if " + stateType + " state is updated: " + err));
-        // });
-      }
-    });
-  });
+  } catch (err) {
+    logger.error(`Error while retrieving ${stateType} states: ${err}`);
+    throw new ErrorModel(500, `Error while retrieving ${stateType} states: ${err.message}`);
+  }
 }
 
 /**
- * Add states with an specific query.
+ * Add states with a specific query.
  * @function _put
- * @param {String} stateType enum: {guarantees, pricing, agreement, metrics}
- * @param {StateManagerQuery} query query will be matched with an state.
- * @param {Object} value value
- * @param {Object} metadata {logsState, evidences, parameters}.
- * @return {Promise} Promise that will return an array of state objects
- * */
-function _put (stateType, query, value, metadata) {
+ * @param {String} stateType - Enum: {guarantees, pricing, agreement, metrics}.
+ * @param {Object} query - Query to match with a state.
+ * @param {Object} value - Value to be added.
+ * @param {Object} metadata - Additional metadata (e.g., logsState, evidences, parameters).
+ * @returns {Promise<Array>} - Resolves with an array of state objects.
+ */
+async function _put(stateType, query, value, metadata) {
   const stateManager = this;
-  logger.debug('(_put) Saving state of ' + stateType);
-  return new Promise(function (resolve, reject) {
-    const StateModel = db.models.StateModel;
+  const StateModel = db.models.StateModel;
 
-    logger.debug('AGREEMENT: ' + stateManager.agreement.id);
-    const dbQuery = projectionBuilder(stateType, refineQuery(stateManager.agreement.id, stateType, query));
-    logger.debug('Updating ' + stateType + ' state... with refinedQuery = ' + JSON.stringify(dbQuery, null, 2));
+  logger.debug(`(_put) Saving state of ${stateType}`);
+  logger.debug(`AGREEMENT: ${stateManager.agreement.id}`);
 
-    StateModel.update(dbQuery, {
+  const dbQuery = projectionBuilder(stateType, refineQuery(stateManager.agreement.id, stateType, query));
+  logger.debug(`Updating ${stateType} state with refinedQuery: ${JSON.stringify(dbQuery, null, 2)}`);
+
+  try {
+    const result = await StateModel.updateOne(dbQuery, {
       $push: {
         records: new Record(value, metadata)
       }
-    }, function (err, result) {
-      if (err) {
-        logger.debug('Error, Is not possible to update state with this query = ' + JSON.stringify(query));
-        return reject(new ErrorModel(500, err));
-      } else {
-        logger.debug('NMODIFIED record:  ' + JSON.stringify(result));
-
-        let stateSignature = 'StateSignature (' + result.nModified + ') ' + '[';
-        for (const v in dbQuery) {
-          stateSignature += dbQuery[v];
-        }
-        stateSignature += ']';
-        logger.debug(stateSignature);
-
-        // Check if there already is an state
-        if (result.nModified === 0) {
-          // There is no state for Guarantee / Metric , ....
-          logger.debug('Creating new ' + stateType + ' state with the record...');
-
-          const newState = new State(value, refineQuery(stateManager.agreement.id, stateType, query), metadata);
-          const stateModel = new StateModel(newState);
-
-          stateModel.save(newState, function (err) {
-            if (err) {
-              logger.error(err.toString());
-              return reject(new ErrorModel(500, err));
-            } else {
-              logger.debug('Inserted new Record in the new ' + stateType + ' state.');
-              StateModel.find(projectionBuilder(stateType, refineQuery(stateManager.agreement.id, stateType, query)), function (err, result) {
-                if (err) {
-                  logger.error(err.toString());
-                  return reject(new ErrorModel(500, err));
-                }
-                /*    if (result.length != 1) {
-                                    logger.error("Inconsistent DB: multiple states for query = " + JSON.stringify(refineQuery(stateManager.agreement.id, stateType, query), null, 2));
-                                    logger.error("DB result = " + JSON.stringify(result, null, 2));
-                                    return reject(new ErrorModel(500, "Inconsistent DB: multiple states for query " + JSON.stringify(refineQuery(stateManager.agreement.id, stateType, query), null, 2)));
-                                } else { */
-                if(query.scope.servicio==='INT_PRV_CITASEVO_V1.0.0'){
-                  console.log(result)
-                }
-                return resolve(result);
-                //   }
-              });
-            }
-          });
-        } else {
-          // There is some state for Guarantee / Metric , ....
-          // Lets add a new Record.
-          logger.debug('Inserted new Record of ' + stateType + ' state.');
-          StateModel.find(projectionBuilder(stateType, refineQuery(stateManager.agreement.id, stateType, query)), function (err, result) {
-            if (err) {
-              logger.error(err.toString());
-              return reject(new ErrorModel(500, err));
-            }
-            /*     if (result.length != 1) {
-                            logger.error("Inconsistent DB: multiple states for query = " + JSON.stringify(refineQuery(stateManager.agreement.id, stateType, query), null, 2));
-                            logger.error("DB result = " + JSON.stringify(result, null, 2));
-                            return reject(new ErrorModel(500, "Inconsistent DB: multiple states for query " + JSON.stringify(refineQuery(stateManager.agreement.id, stateType, query), null, 2)));
-                        } else { */             
-            return resolve(result);
-            // }
-          });
-        }
-      }
     });
-  });
+
+    logger.debug(`NMODIFIED record: ${JSON.stringify(result)}`);
+
+    let stateSignature = `StateSignature (${result.nModified}) [`;
+    stateSignature += Object.values(dbQuery).join(', ');
+    stateSignature += ']';
+    logger.debug(stateSignature);
+
+    if (result.nModified === 0) {
+      logger.debug(`Creating new ${stateType} state with the record...`);
+
+      const newState = new State(value, refineQuery(stateManager.agreement.id, stateType, query), metadata);
+      const stateModel = new StateModel(newState);
+
+      await stateModel.save();
+      logger.debug(`Inserted new Record in the new ${stateType} state.`);
+
+      const newResult = await StateModel.find(
+        projectionBuilder(stateType, refineQuery(stateManager.agreement.id, stateType, query))
+      );
+
+      if (query.scope.servicio === 'INT_PRV_CITASEVO_V1.0.0') {
+        console.log(newResult);
+      }
+
+      return newResult;
+    } else {
+      logger.debug(`Inserted new Record of ${stateType} state.`);
+
+      const existingResult = await StateModel.find(
+        projectionBuilder(stateType, refineQuery(stateManager.agreement.id, stateType, query))
+      );
+
+      return existingResult;
+    }
+  } catch (err) {
+    logger.error(`Error updating ${stateType} state: ${err}`);
+    throw new ErrorModel(500, err);
+  }
 }
 
+
+
 /**
- * Modify states with an specific query.
+ * Modify states with a specific query.
  * @function _update
- * @param {String} stateType enum: {guarantees, pricing, agreement, metrics}
- * @param {StateManagerQuery} query query will be matched with an state.
- * @param {Object} logsState logsState
- * @return {Promise} Promise that will return an array of state objects
- * */
-function _update (stateType, query, logsState, forceUpdate) {
+ * @param {String} stateType - Enum: {guarantees, pricing, agreement, metrics, quotas}
+ * @param {Object} query - Query to match with a state.
+ * @param {Object} logsState - Logs state.
+ * @param {Boolean} forceUpdate - Force update flag.
+ * @returns {Promise<Array>} - Resolves with an array of state objects.
+ */
+async function _update(stateType, query, logsState, forceUpdate) {
   const stateManager = this;
-  logger.debug('(_update) Updating state of ' + stateType);
-  return new Promise(function (resolve, reject) {
+  logger.debug(`(_update) Updating state of ${stateType}`);
+
+  try {
     switch (stateType) {
-    case 'agreement':
-      calculators.agreementCalculator.process(stateManager)
-        .then(function (states) {
-          // states.forEach((state)=>{
-          // 	stateManager.put(state.stateType, agreementState).then(function (data) {
-          return resolve(states);
-          //     }, function (err) {
-          //         return reject(err);
-          //     });
-          // });
-        }, function (err) {
-          logger.error(err.toString());
-          return reject(new ErrorModel(500, err));
-        });
-      break;
-    case 'guarantees':
-      const guaranteeDefinition = stateManager.agreement.terms.guarantees.find((e) => {
-        return query.guarantee === e.id;
-      });
-        // const period = utils.time.getLastPeriod(stateManager.agreement, guaranteeDefinition.of[0].window);
-        // //const reliableScope = query.period.from === '2021-09-15T22:00:00.000Z'
-        // const reliableScope = query.period.from === period.from
-        // if(reliableScope && guaranteeDefinition.of[0].reliable){
-        //   try{
-        //     governify.infrastructure.getService('internal.accountable').get('/api/v1/guarantees/' + query.guarantee).then( (response) => {
-        //       const reliableGuaranteeState = response.data.guaranteeState
-        //       const processGuarantees = [];
-              
-      //       // console.log(reliableGuaranteeState)
-      //       // console.log(reliableGuaranteeState.length)
-      //       reliableGuaranteeState.forEach( (guaranteeState) => {
-      //         processGuarantees.push(stateManager.put(stateType, {
-      //           guarantee: query.guarantee,
-      //           period: guaranteeState.period,
-      //           scope: guaranteeState.scope
-      //         }, guaranteeState.value, {
-      //           //   "logsState": logsState,
-      //           metrics: guaranteeState.metrics,
-      //           evidences: guaranteeState.evidences
-      //           //  penalties: guaranteeState.penalties ? guaranteeState.penalties : null
-      //         }));
-      //       });
-      //       logger.debug('Created parameters array for saving states of guarantee of length ' + processGuarantees.length);
-      //       logger.debug('Persisting guarantee states...');
-      //       Promise.all(processGuarantees).then(function (guarantees) {
-      //         logger.debug('All guarantee states have been persisted');
-      //         const result = [];
-      //         for (const a in guarantees) {
-
-      //           // console.log(guarantees[a][0].records)
-      //           result.push(guarantees[a][0]);
-      //         }
-      //         return resolve(result);
-      //       });
-      //     }).catch(() => {
-      //       logger.error('Error getting reliable guarantees states')
-      //     })
-      //   }catch{
-      //     logger.error(err);
-      //     const errorString = 'Error processing guarantees';
-      //     return promiseErrorHandler(reject, 'state-manager', '_update', 500, errorString, err);
-      //   }
-      // }else{
-      calculators.guaranteeCalculator.process(stateManager, query, forceUpdate)
-        .then(function (guaranteeStates) {
-          // console.log(1)
-          // console.log(guaranteeStates.guaranteeValues.length)
-          logger.debug('Guarantee states for ' + guaranteeStates.guaranteeId + ' have been calculated (' + guaranteeStates.guaranteeValues.length + ') ');
-          logger.debug('Guarantee states: ' + JSON.stringify(guaranteeStates, null, 2));
-          const processGuarantees = [];
-          guaranteeStates.guaranteeValues.forEach(function (guaranteeState) {
-            logger.debug('Guarantee state: ' + JSON.stringify(guaranteeState, null, 2));
-            processGuarantees.push(stateManager.put(stateType, {
-              guarantee: query.guarantee,
-              period: guaranteeState.period,
-              scope: guaranteeState.scope
-            }, guaranteeState.value, {
-              //   "logsState": logsState,
-              metrics: guaranteeState.metrics,
-              evidences: guaranteeState.evidences
-              //  penalties: guaranteeState.penalties ? guaranteeState.penalties : null
-            }));
-          });
-          logger.debug('Created parameters array for saving states of guarantee of length ' + processGuarantees.length);
-          logger.debug('Persisting guarantee states...');
-          Promise.all(processGuarantees).then(function (guarantees) {
-            logger.debug('All guarantee states have been persisted');
-            const result = [];
-            for (const a in guarantees) {
-              result.push(guarantees[a][0]);
-            }
-            return resolve(result);
-          });
-        }).catch(function (err) {
-          logger.error(err);
-          const errorString = 'Error processing guarantees';
-          return promiseErrorHandler(reject, 'state-manager', '_update', 500, errorString, err);
-        });
-      // }
-      break;
-    case 'metrics':
-      calculators.metricCalculator.process(stateManager.agreement, query.metric, query)
-        .then(function (metricStates) {
-          logger.debug('Metric states for ' + metricStates.metricId + ' have been calculated (' + metricStates.metricValues.length + ') ');
-          const processMetrics = [];
-          metricStates.metricValues.forEach(function (metricValue) {
-            processMetrics.push(
-              stateManager.put(stateType, {
-                metric: query.metric,
-                scope: metricValue.scope,
-                period: metricValue.period,
-                window: query.window
-              }, metricValue.value, {
-                //   "logsState": logsState,
-                evidences: metricValue.evidences,
-                parameters: metricValue.parameters
-              }));
-          });
-          logger.debug('Created parameters array for saving states of metric of length ' + processMetrics.length);
-          logger.debug('Persisting metric states...');
-          return Promise.all(processMetrics).then(function (metrics) {
-            logger.debug('All metric states have been persisted');
-            const result = [];
-            for (const a in metrics) {
-              result.push(metrics[a][0]);
-            }
-            return resolve(result);
-          });
-        }).catch(function (err) {
-          const errorString = 'Error processing metrics';
-          return promiseErrorHandler(reject, 'state-manager', '_update', 500, errorString, err);
-        });
-      break;
-    case 'pricing':
-      calculators.pricingCalculator.process(stateManager.agreement, query, stateManager).then(function (pricingStates) {
-        logger.debug('All pricing states (' + pricingStates.length + ') have been calculated ');
-        return resolve(pricingStates);
-      }, function (err) {
-        logger.error(err.toString());
-        return reject(new ErrorModel(500, err));
-      });
-      break;
-
-    case 'quotas':
-      calculators.quotasCalculator.process(stateManager, query).then(function (quotasStates) {
-        logger.debug('All quotas states (' + quotasStates.length + ') has been calculated ');
-        // putting quotas
-        return resolve(quotasStates);
-      }, function (err) {
-        logger.error(err.toString());
-        return reject(new ErrorModel(500, err));
-      });
-      break;
-    default:
-      return reject(new ErrorModel(500, 'There are not method implemented to calculate ' + stateType + ' state'));
+    case 'agreement': {
+      const states = await calculators.agreementCalculator.process(stateManager);
+      return states;
     }
-  });
+    case 'guarantees': {
+      const guaranteeDefinition = stateManager.agreement.terms.guarantees.find(
+        (e) => query.guarantee === e.id
+      );
+
+      if (!guaranteeDefinition) {
+        throw new ErrorModel(400, 'Guarantee not found');
+      }
+
+      const guaranteeStates = await calculators.guaranteeCalculator.process(stateManager, query, forceUpdate);
+      logger.debug(`Guarantee states for ${guaranteeStates.guaranteeId} calculated (${guaranteeStates.guaranteeValues.length})`);
+
+      const processGuarantees = guaranteeStates.guaranteeValues.map((guaranteeState) =>
+        stateManager.put(stateType, {
+          guarantee: query.guarantee,
+          period: guaranteeState.period,
+          scope: guaranteeState.scope
+        }, guaranteeState.value, {
+          metrics: guaranteeState.metrics,
+          evidences: guaranteeState.evidences
+        })
+      );
+
+      logger.debug(`Persisting ${processGuarantees.length} guarantee states...`);
+      const guarantees = await Promise.all(processGuarantees);
+      return guarantees.map((g) => g[0]);
+    }
+    case 'metrics': {
+      const metricStates = await calculators.metricCalculator.process(stateManager.agreement, query.metric, query);
+      logger.debug(`Metric states for ${metricStates.metricId} calculated (${metricStates.metricValues.length})`);
+
+      const processMetrics = metricStates.metricValues.map((metricValue) =>
+        stateManager.put(stateType, {
+          metric: query.metric,
+          scope: metricValue.scope,
+          period: metricValue.period,
+          window: query.window
+        }, metricValue.value, {
+          evidences: metricValue.evidences,
+          parameters: metricValue.parameters
+        })
+      );
+
+      logger.debug(`Persisting ${processMetrics.length} metric states...`);
+      const metrics = await Promise.all(processMetrics);
+      return metrics.map((m) => m[0]);
+    }
+    case 'pricing': {
+      const pricingStates = await calculators.pricingCalculator.process(stateManager.agreement, query, stateManager);
+      logger.debug(`All pricing states (${pricingStates.length}) calculated`);
+      return pricingStates;
+    }
+    case 'quotas': {
+      const quotasStates = await calculators.quotasCalculator.process(stateManager, query);
+      logger.debug(`All quotas states (${quotasStates.length}) calculated`);
+      return quotasStates;
+    }
+    default: {
+      throw new ErrorModel(500, `No method implemented to calculate ${stateType} state`);
+    }
+    }
+  } catch (err) {
+    logger.error(`Error updating ${stateType} state: ${err}`);
+    throw new ErrorModel(500, `Error updating ${stateType} state: ${err.message}`);
+  }
 }
 
 /**
@@ -464,84 +314,6 @@ function Record (value, metadata) {
     }
   }
 }
-
-// /**
-//  * Check if it is updated.
-//  * @function isUpdated
-//  * @param {String} agreement agreement ID
-//  * @param {Object} states states
-//  * */
-// function isUpdated(agreement, states) {
-//     return new Promise(function (resolve, reject) {
-//         var logUris = null;
-//         for (var log in agreement.context.definitions.logs) {
-//             if (agreement.context.definitions.logs[log].default) {
-//                 logUris = agreement.context.definitions.logs[log].stateUri;
-//             }
-//         }
-//         logger.debug("LogUris = " + logUris);
-//         if (logUris) {
-//             var current = states;
-//             if (current) {
-//                 current = getCurrent(current[0]);
-//                 logUris += "?endgte=" + states[0].period.from + "&endlte=" + states[0].period.to;
-//             }
-
-//             logger.debug('Sending request to LOG state URI...');
-//             process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-//             request.get({
-//                 uri: logUris,
-//                 json: true,
-//                 // The below parameters are specific to request-retry
-//                 maxAttempts: config.maxAttempts,
-//                 retryDelay: config.retryDelay,
-//                 retryStrategy: request.RetryStrategies.HTTPOrNetworkError // retry on 5xx or network errors
-//             }, function (err, response, body) {
-//                 if (err) {
-//                     logger.error(err);
-//                     return reject("Error with Logs state URI this: " + err);
-//                 }
-//                 if (response) {
-//                     logger.info('Number of request attempts to Logs state URI: ' + response.attempts);
-//                 }
-//                 if (response.statusCode == 200 && body) {
-//                     if (current) {
-//                         if (current.logsState) {
-//                             if (current.logsState == body) {
-//                                 return resolve({
-//                                     isUpdated: true,
-//                                     logsState: body
-//                                 });
-//                             } else {
-//                                 return resolve({
-//                                     isUpdated: false,
-//                                     logsState: body
-//                                 });
-//                             }
-//                         } else {
-//                             return resolve({
-//                                 isUpdated: true,
-//                                 logsState: body
-//                             });
-//                         }
-//                     } else {
-//                         return resolve({
-//                             isUpdated: false,
-//                             logsState: body
-//                         });
-//                     }
-//                 } else {
-//                     return reject("Error with Logs state URI this: " + logUris + " is not correct");
-//                 }
-//             });
-//         } else {
-//             logger.debug("This metric is not calculated from logs, please PUT values.");
-//             return resolve({
-//                 isUpdated: true
-//             });
-//         }
-//     });
-// }
 
 /**
  * Get current state.
