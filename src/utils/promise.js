@@ -24,7 +24,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 'use strict';
-const Promise = require('bluebird');
 const governify = require('governify-commons');
 const logger = governify.getLogger().tag('promise-manager');
 const ErrorModel = require('../errors/index.js').errorModel;
@@ -43,7 +42,8 @@ const promiseErrorHandler = errors.promiseErrorHandler;
 
 module.exports = {
   processParallelPromises: _processParallelPromises,
-  processSequentialPromises: _processSequentialPromises
+  processSequentialPromises: _processSequentialPromises,
+  processSequentialPromisesSafely: _processSequentialPromisesSafely
 };
 
 /**
@@ -128,6 +128,33 @@ function _processParallelPromises (manager, promisesArray, result, res, streamin
     });
   }
 }
+
+
+async function _processSequentialPromisesSafely(type, manager, queries, result, res, streaming, forceUpdate) {
+  for (const query of queries) {
+    try {
+      const states = await manager.get(type, query, forceUpdate);
+      for (const state of states) {
+        const currentState = manager.current(state);
+        if (streaming) {
+          result.push(currentState);
+        } else {
+          result.push(currentState);
+        }
+      }
+    } catch (err) {
+      logger.error(`Error while processing query: ${JSON.stringify(query)} - ${err.message}`);
+      throw new ErrorModel(500, 'Error processing sequential promises', err);
+    }
+  }
+
+  if (streaming) {
+    result.push(null);
+  } else if (res) {
+    res.json(result);
+  }
+}
+
 
 /**
  * Process mode.
