@@ -61,7 +61,6 @@ function deleteOverride (override, agreement, guarantee) {
 
 // Helper function to get a bill for a specific period
 async function getBillForPeriod(agreement, period) {
-  console.log('here');
   const bill = await bills.getBill(agreement, period);
   if (bill && bill.state.toUpperCase() === 'CLOSED') {
     throw new ErrorModel(403, 'You cannot override periods when the bill is closed.');

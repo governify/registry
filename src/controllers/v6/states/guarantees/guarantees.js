@@ -24,7 +24,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 'use strict';
-const Promise = require('bluebird');
 const JSONStream = require('JSONStream');
 
 const governify = require('governify-commons');
@@ -60,7 +59,7 @@ module.exports = {
 };
 
 // Method used internally
-function _getGuarantees(agreementId, guaranteeId, query, forceUpdate) {
+function _getGuarantees(agreementId, guaranteeId, query) {
   return new Promise(function (resolve, reject) {
     stateManager({
       id: agreementId
@@ -101,117 +100,254 @@ function _getGuarantees(agreementId, guaranteeId, query, forceUpdate) {
  * @param {Object} next next function
  * @alias module:guarantees.guaranteesGET
  * */
-function _guaranteesGET(req, res) {
-  const { agreementId } = req.params;
-  const from = req.query.from;
-  const to = req.query.to;
-  const lastPeriod = req.query.lastPeriod ? (req.query.lastPeriod === 'true') : true;
-  const newPeriodsFromGuarantees = req.query.newPeriodsFromGuarantees ? (req.query.newPeriodsFromGuarantees === 'true') : true;
-  logger.info('New request to GET guarantees - With new periods from guarantees: ' + newPeriodsFromGuarantees);
 
-  let result;
+async function _guaranteesGET(req, res) {
+  const { agreementId } = req.params;
+  const { from, to, lastPeriod = 'true', newPeriodsFromGuarantees = 'true', forceUpdate } = req.query;
+  const lastPeriodFlag = lastPeriod === 'true';
+  const newPeriodsFlag = newPeriodsFromGuarantees === 'true';
+
+  logger.info(`New request to GET guarantees - With new periods from guarantees: ${newPeriodsFlag}`);
+
+  const result = config.streaming
+    ? utils.stream.createReadable()
+    : [];
+
   if (config.streaming) {
     logger.info('### Streaming mode ###');
-
     res.setHeader('content-type', 'application/json; charset=utf-8');
-    result = utils.stream.createReadable();
     result.pipe(JSONStream.stringify()).pipe(res);
   } else {
     logger.info('### NO Streaming mode ###');
-    result = [];
   }
 
-  stateManager({
-    id: agreementId
-  }).then(function (manager) {
+  try {
+    const manager = await stateManager({ id: agreementId });
     logger.info('Getting state of guarantees...');
-    const validationErrors = [];
+
     if (config.parallelProcess.guarantees) {
-      logger.info('### Process mode = PARALLEL ###');
-
-      const guaranteesPromises = [];
-      manager.agreement.terms.guarantees.forEach(function (guarantee) {
-        const query = new Query(req.query);
-
-        const validation = utils.validators.guaranteeQuery(query, guarantee.id, guarantee);
-        if (!validation.valid) {
-          validation.guarantee = guarantee.id;
-          validationErrors.push(validation);
-        } else {
-          if (req.query.forceUpdate == 'true') {
-            guaranteesPromises.push(manager.get('guarantees', query, true));
-          } else {
-            guaranteesPromises.push(manager.get('guarantees', query, false));
-          }
-        }
-      });
-
-      if (validationErrors.length === 0) {
-        utils.promise.processParallelPromises(manager, guaranteesPromises, result, res, config.streaming);
-      } else {
-        res.status(400).json(new ErrorModel(400, validationErrors));
-      }
+      await processGuaranteesInParallel(manager, req, res, result, forceUpdate === 'true');
     } else {
-      logger.info('### Process mode = SEQUENTIAL ###');
-      const guaranteesQueries = manager.agreement.terms.guarantees.reduce(function (acc, guarantee) {
-        /* Process each guarantee individually, to create queries for every one */
-        const guaranteeDefinition = manager.agreement.terms.guarantees.find((e) => {
-          return guarantee.id === e.id;
-        });
-        const requestWindow = guaranteeDefinition.of[0].window; // Get the window of the current guarantee
-        let periods;
-        /* Create all the queries corresponding for the specified period and the current guarantee */
-        let allQueries = [];
-        if (from && to) {
-          requestWindow.from = from;
-          requestWindow.end = to;
-          // if (newPeriodsFromGuarantees) {
-          if (true) {
-            periods = utils.time.getPeriods(manager.agreement, requestWindow);
-          } else {
-            periods = [{ from: new Date(from).toISOString(), to: new Date(to).toISOString() }];
-          }
+      await processGuaranteesSequentially(manager, res, result, lastPeriodFlag, newPeriodsFlag, forceUpdate === 'true', from, to);
+    }
+  } catch (err) {
+    logger.error(`(guarantee controller) ${JSON.stringify(err.message)}`);
+    res.status(err.code || 500).json({ message: err.message });
+  }
+}
 
-          // Create query for every period
-          allQueries = periods.map(function (period) {
-            return gUtils.buildGuaranteeQuery(guarantee.id, period.from, period.to);
-          });
-        } else {
-          if (lastPeriod) {
-            const period = utils.time.getLastPeriod(manager.agreement, requestWindow);
-            allQueries.push(gUtils.buildGuaranteeQuery(guarantee.id, period.from, period.to));
-          } else {
-            allQueries.push(guarantee.id);
-          }
-        }
-        /* Validate queries and add to the list */
-        const queries = [...acc];
-        for (const query of allQueries) {
-          const validation = utils.validators.guaranteeQuery(query, guarantee.id);
-          if (!validation.valid) {
-            validation.guarantee = guarantee.id;
-            validationErrors.push(validation);
-          } else {
-            queries.push(query);
-          }
-        }
-        return queries;
-      }, []);
-      if (validationErrors.length === 0) {
-        if (req.query.forceUpdate == 'true') {
-          utils.promise.processSequentialPromises('guarantees', manager, guaranteesQueries, result, res, config.streaming, true);
-        } else {
-          utils.promise.processSequentialPromises('guarantees', manager, guaranteesQueries, result, res, config.streaming, false);
-        }
+async function processGuaranteesInParallel(manager, req, res, result, forceUpdate) {
+  logger.info('### Process mode = PARALLEL ###');
+
+  const guaranteesPromises = [];
+  const validationErrors = [];
+
+  for (const guarantee of manager.agreement.terms.guarantees) {
+    const query = new Query(req.query);
+    const validation = utils.validators.guaranteeQuery(query, guarantee.id, guarantee);
+
+    if (!validation.valid) {
+      validation.guarantee = guarantee.id;
+      validationErrors.push(validation);
+    } else {
+      guaranteesPromises.push(manager.get('guarantees', query, forceUpdate));
+    }
+  }
+
+  if (validationErrors.length > 0) {
+    res.status(400).json(new ErrorModel(400, validationErrors));
+    return;
+  }
+
+  utils.promise.processParallelPromises(manager, guaranteesPromises, result, res, config.streaming);
+}
+
+async function processGuaranteesSequentially(manager, res, result, lastPeriodFlag, newPeriodsFlag, forceUpdate, from, to) {
+  logger.info('### Process mode = SEQUENTIAL ###');
+  
+  
+  const guaranteesQueries = [];
+  const validationErrors = [];
+
+  for (const guarantee of manager.agreement.terms.guarantees) {
+    const queries = await buildGuaranteeQueries(manager, guarantee, lastPeriodFlag, newPeriodsFlag, from, to);
+    for (const query of queries) {
+      const validation = utils.validators.guaranteeQuery(query, guarantee.id, guarantee);
+      logger.debug(`Validation result: ${JSON.stringify(validation)}`);
+      if (!validation.valid) {
+        validation.guarantee = guarantee.id;
+        validationErrors.push(validation);
       } else {
-        res.status(400).json(new ErrorModel(400, validationErrors));
+        guaranteesQueries.push(query);
       }
     }
-  }, function (err) {
-    logger.error('(guarantee controller) ' + JSON.stringify(err.message));
-    res.status(err.code || 500).json({ message: err.message});
-  });
+  }
+
+  if (validationErrors.length > 0) {
+    res.status(400).json(new ErrorModel(400, validationErrors));
+    return;
+  }
+
+  try {
+    await utils.promise.processSequentialPromisesSafely(
+      'guarantees',
+      manager,
+      guaranteesQueries,
+      result,
+      res,
+      config.streaming,
+      forceUpdate
+    );
+  } catch (err) {
+    logger.error(`Error in processSequentialPromises: ${err.message}`);
+    res.status(500).json(new ErrorModel(500, 'Error processing guarantees sequentially', err));
+  }
 }
+
+async function buildGuaranteeQueries(manager, guarantee, lastPeriodFlag, newPeriodsFlag, from, to) {
+  const guaranteeDefinition = manager.agreement.terms.guarantees.find(e => guarantee.id === e.id);
+  const requestWindow = guaranteeDefinition.of[0].window;
+
+  logger.info(`Building queries for guarantee: ${guarantee.id}`);
+  logger.info(`Request window: ${JSON.stringify(requestWindow)}`);
+
+  if (from && to) {
+    requestWindow.from = from;
+    requestWindow.end = to;
+
+    logger.info(`From: ${from}, To: ${to}`);
+    logger.info(`New periods flag: ${newPeriodsFlag}`);
+
+    const periods = newPeriodsFlag
+      ? utils.time.getPeriods(manager.agreement, requestWindow)
+      : [{ from: new Date(from).toISOString(), to: new Date(to).toISOString() }];
+
+    logger.info(`Periods: ${JSON.stringify(periods)}`);
+    return periods.map(period => 
+      gUtils.buildGuaranteeQuery(guarantee.id, period.from, period.to)
+    );
+  }
+  if (lastPeriodFlag) {
+    const period = utils.time.getLastPeriod(manager.agreement, requestWindow);
+    logger.info(`Last period: ${JSON.stringify(period)}`);
+    return [gUtils.buildGuaranteeQuery(guarantee.id, period.from, period.to)];
+  }
+  logger.info(`Returning guarantee ID: ${guarantee.id}`);
+  return [guarantee.id];
+}
+
+
+// function _guaranteesGET(req, res) {
+//   const { agreementId } = req.params;
+//   const from = req.query.from;
+//   const to = req.query.to;
+//   const lastPeriod = req.query.lastPeriod ? (req.query.lastPeriod === 'true') : true;
+//   const newPeriodsFromGuarantees = req.query.newPeriodsFromGuarantees ? (req.query.newPeriodsFromGuarantees === 'true') : true;
+//   logger.info('New request to GET guarantees - With new periods from guarantees: ' + newPeriodsFromGuarantees);
+
+//   let result;
+//   if (config.streaming) {
+//     logger.info('### Streaming mode ###');
+
+//     res.setHeader('content-type', 'application/json; charset=utf-8');
+//     result = utils.stream.createReadable();
+//     result.pipe(JSONStream.stringify()).pipe(res);
+//   } else {
+//     logger.info('### NO Streaming mode ###');
+//     result = [];
+//   }
+
+//   stateManager({
+//     id: agreementId
+//   }).then(function (manager) {
+//     logger.info('Getting state of guarantees...');
+//     const validationErrors = [];
+//     if (config.parallelProcess.guarantees) {
+//       logger.info('### Process mode = PARALLEL ###');
+
+//       const guaranteesPromises = [];
+//       manager.agreement.terms.guarantees.forEach(function (guarantee) {
+//         const query = new Query(req.query);
+
+//         const validation = utils.validators.guaranteeQuery(query, guarantee.id, guarantee);
+//         if (!validation.valid) {
+//           validation.guarantee = guarantee.id;
+//           validationErrors.push(validation);
+//         } else {
+//           if (req.query.forceUpdate == 'true') {
+//             guaranteesPromises.push(manager.get('guarantees', query, true));
+//           } else {
+//             guaranteesPromises.push(manager.get('guarantees', query, false));
+//           }
+//         }
+//       });
+
+//       if (validationErrors.length === 0) {
+//         utils.promise.processParallelPromises(manager, guaranteesPromises, result, res, config.streaming);
+//       } else {
+//         res.status(400).json(new ErrorModel(400, validationErrors));
+//       }
+//     } else {
+//       logger.info('### Process mode = SEQUENTIAL ###');
+//       const guaranteesQueries = manager.agreement.terms.guarantees.reduce(function (acc, guarantee) {
+//         /* Process each guarantee individually, to create queries for every one */
+//         const guaranteeDefinition = manager.agreement.terms.guarantees.find((e) => {
+//           return guarantee.id === e.id;
+//         });
+//         const requestWindow = guaranteeDefinition.of[0].window; // Get the window of the current guarantee
+//         let periods;
+//         /* Create all the queries corresponding for the specified period and the current guarantee */
+//         let allQueries = [];
+//         if (from && to) {
+//           requestWindow.from = from;
+//           requestWindow.end = to;
+//           // if (newPeriodsFromGuarantees) {
+//           if (true) {
+//             periods = utils.time.getPeriods(manager.agreement, requestWindow);
+//           } else {
+//             periods = [{ from: new Date(from).toISOString(), to: new Date(to).toISOString() }];
+//           }
+
+//           // Create query for every period
+//           allQueries = periods.map(function (period) {
+//             return gUtils.buildGuaranteeQuery(guarantee.id, period.from, period.to);
+//           });
+//         } else {
+//           if (lastPeriod) {
+//             const period = utils.time.getLastPeriod(manager.agreement, requestWindow);
+//             allQueries.push(gUtils.buildGuaranteeQuery(guarantee.id, period.from, period.to));
+//           } else {
+//             allQueries.push(guarantee.id);
+//           }
+//         }
+//         /* Validate queries and add to the list */
+//         const queries = [...acc];
+//         for (const query of allQueries) {
+//           const validation = utils.validators.guaranteeQuery(query, guarantee.id);
+//           if (!validation.valid) {
+//             validation.guarantee = guarantee.id;
+//             validationErrors.push(validation);
+//           } else {
+//             queries.push(query);
+//           }
+//         }
+//         return queries;
+//       }, []);
+//       if (validationErrors.length === 0) {
+//         if (req.query.forceUpdate == 'true') {
+//           utils.promise.processSequentialPromises('guarantees', manager, guaranteesQueries, result, res, config.streaming, true);
+//         } else {
+//           utils.promise.processSequentialPromises('guarantees', manager, guaranteesQueries, result, res, config.streaming, false);
+//         }
+//       } else {
+//         res.status(400).json(new ErrorModel(400, validationErrors));
+//       }
+//     }
+//   }, function (err) {
+//     logger.error('(guarantee controller) ' + JSON.stringify(err.message));
+//     res.status(err.code || 500).json({ message: err.message});
+//   });
+// }
 
 /**
  * Get guarantees by ID.
@@ -223,7 +359,6 @@ function _guaranteesGET(req, res) {
 async function _guaranteeIdGET(req, res) {
   logger.info('New request to GET guarantee');
   const  { agreementId, guaranteeId } = req.params;
-  const query = new Query(req.query);
   const forceUpdate = req.query.forceupdate ? req.query.forceupdate : 'false';
   const from = req.query.from;
   const to = req.query.to;
