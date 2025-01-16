@@ -82,8 +82,6 @@ async function processGuarantee(manager, query, forceUpdate) {
   const guaranteeId = query.guarantee;
 
   try {
-    logger.debug("Searching guarantee '%s' in array:\n %s", guaranteeId, JSON.stringify(agreement.terms.guarantees, null, 2));
-
     // Retrieve the guarantee definition from the agreement that matches the provided ID
     const guarantee = agreement.terms.guarantees.find(g => g.id === guaranteeId);
 
@@ -109,8 +107,6 @@ async function processGuarantee(manager, query, forceUpdate) {
     }).filter(Boolean);
 
     const guaranteesValues = [];
-    logger.debug('Processing scoped guarantee (' + guarantee.id + ')...');
-    logger.debug('With query: (' + JSON.stringify(query, null, 2) + ')...');
 
     for (const guaranteeParam of processScopedGuarantees) {
       const value = await processScopedGuarantee(
@@ -179,6 +175,7 @@ async function processScopedGuarantee(manager, query, guarantee, ofElement, forc
     const processMetrics = [];
     if (ofElement.with) {
       const window = {
+        ...ofElement.window,
         initial: query.period?.from || '*',
         end: query.period?.to || '*',
         timeZone: agreement.context?.validity?.timeZone || 'UTC',
@@ -219,14 +216,12 @@ async function processScopedGuarantee(manager, query, guarantee, ofElement, forc
         }
       }
     }
-
     const guaranteesValues = [];
     for (let i = 0; i < timedScopes.length; i++) {
       const guaranteeValue = calculatePenalty(agreement, guarantee, ofElement, timedScopes[i], metricValues[i], slo, penalties);
       if (guaranteeValue) guaranteesValues.push(guaranteeValue);
     }
 
-    logger.debug(`Guarantees values: ${JSON.stringify(guaranteesValues, null, 2)}`);
     return guaranteesValues;
 
   } catch (err) {
