@@ -64,13 +64,11 @@ async function initialize(_agreement) {
   
   try {
     const AgreementModel = db.models.AgreementModel;
-    logger.debug('Searching agreement with agreementID = ' + _agreement.id);
     const ag = await AgreementModel.findOne({ id: _agreement.id });
     
     if (!ag) {
       throw new ErrorModel(404, 'There is no agreement with id: ' + _agreement.id);
     }
-    logger.debug('StateManager for agreementID = ' + _agreement.id + ' initialized');
 
     // Building stateManager object
     const stateManager = {
@@ -143,11 +141,9 @@ async function _put(stateType, query, value, metadata) {
   const stateManager = this;
   const StateModel = db.models.StateModel;
 
-  logger.debug(`(_put) Saving state of ${stateType}`);
-  logger.debug(`AGREEMENT: ${stateManager.agreement.id}`);
+  logger.debug(`(_put) Saving state of ${stateType} for agreement ${stateManager.agreement.id}`);
 
   const dbQuery = projectionBuilder(stateType, refineQuery(stateManager.agreement.id, stateType, query));
-  logger.debug(`Updating ${stateType} state with refinedQuery: ${JSON.stringify(dbQuery, null, 2)}`);
 
   try {
     const result = await StateModel.updateOne(dbQuery, {
@@ -158,12 +154,12 @@ async function _put(stateType, query, value, metadata) {
 
     logger.debug(`NMODIFIED record: ${JSON.stringify(result)}`);
 
-    let stateSignature = `StateSignature (${result.nModified}) [`;
+    let stateSignature = `StateSignature (${result.modifiedCount}) [`;
     stateSignature += Object.values(dbQuery).join(', ');
     stateSignature += ']';
     logger.debug(stateSignature);
 
-    if (result.nModified === 0) {
+    if (result.modifiedCount === 0) {
       logger.debug(`Creating new ${stateType} state with the record...`);
 
       const newState = new State(value, refineQuery(stateManager.agreement.id, stateType, query), metadata);
@@ -227,7 +223,6 @@ async function _update(stateType, query, logsState, forceUpdate) {
       }
 
       const guaranteeStates = await calculators.guaranteeCalculator.process(stateManager, query, forceUpdate);
-      logger.debug(`Guarantee states for ${guaranteeStates.guaranteeId} calculated (${guaranteeStates.guaranteeValues.length})`);
 
       const processGuarantees = guaranteeStates.guaranteeValues.map((guaranteeState) =>
         stateManager.put(stateType, {
@@ -246,21 +241,27 @@ async function _update(stateType, query, logsState, forceUpdate) {
     }
     case 'metrics': {
       const metricStates = await calculators.metricCalculator.process(stateManager.agreement, query.metric, query);
-      logger.debug(`Metric states for ${metricStates.metricId} calculated (${metricStates.metricValues.length})`);
 
+      if (!metricStates || metricStates.metricValues.length === 0) {
+        throw new ErrorModel(400, 'Metric not processed correctly');
+      }
       const processMetrics = metricStates.metricValues.map((metricValue) =>
-        stateManager.put(stateType, {
-          metric: query.metric,
-          scope: metricValue.scope,
-          period: metricValue.period,
-          window: query.window
-        }, metricValue.value, {
-          evidences: metricValue.evidences,
-          parameters: metricValue.parameters
-        })
+        stateManager.put(
+          stateType,
+          {
+            metric: query.metric,
+            scope: metricValue.scope,
+            period: metricValue.period,
+            window: query.window,
+          },
+          metricValue.value,
+          {
+            evidences: metricValue.evidences,
+            parameters: metricValue.parameters,
+          }
+        )
       );
-
-      logger.debug(`Persisting ${processMetrics.length} metric states...`);
+      
       const metrics = await Promise.all(processMetrics);
       return metrics.map((m) => m[0]);
     }

@@ -173,7 +173,6 @@ async function processGuaranteesSequentially(manager, res, result, lastPeriodFla
     const queries = await buildGuaranteeQueries(manager, guarantee, lastPeriodFlag, newPeriodsFlag, from, to);
     for (const query of queries) {
       const validation = utils.validators.guaranteeQuery(query, guarantee.id, guarantee);
-      logger.debug(`Validation result: ${JSON.stringify(validation)}`);
       if (!validation.valid) {
         validation.guarantee = guarantee.id;
         validationErrors.push(validation);
@@ -211,6 +210,11 @@ async function buildGuaranteeQueries(manager, guarantee, lastPeriodFlag, newPeri
   logger.info(`Building queries for guarantee: ${guarantee.id}`);
   logger.info(`Request window: ${JSON.stringify(requestWindow)}`);
 
+  if (lastPeriodFlag) {
+    const period = utils.time.getLastPeriod(manager.agreement, requestWindow);
+    logger.info(`Last period: ${JSON.stringify(period)}`);
+    return [gUtils.buildGuaranteeQuery(guarantee.id, period.from, period.to)];
+  }
   if (from && to) {
     requestWindow.from = from;
     requestWindow.end = to;
@@ -226,11 +230,6 @@ async function buildGuaranteeQueries(manager, guarantee, lastPeriodFlag, newPeri
     return periods.map(period => 
       gUtils.buildGuaranteeQuery(guarantee.id, period.from, period.to)
     );
-  }
-  if (lastPeriodFlag) {
-    const period = utils.time.getLastPeriod(manager.agreement, requestWindow);
-    logger.info(`Last period: ${JSON.stringify(period)}`);
-    return [gUtils.buildGuaranteeQuery(guarantee.id, period.from, period.to)];
   }
   logger.info(`Returning guarantee ID: ${guarantee.id}`);
   return [guarantee.id];
