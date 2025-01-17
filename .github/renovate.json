@@ -8,7 +8,14 @@
       "matchDepTypes": [
         "devDependencies"
       ],
-      "groupName": "npm (development)"
+      "groupName": "npm (development)",
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash",
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ]
     },
     {
       "matchManagers": [
@@ -17,14 +24,22 @@
       "matchDepTypes": [
         "dependencies"
       ],
-      "groupName": "npm (runtime)"
+      "groupName": "npm (runtime)",
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash",
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ]
     },
     {
       "matchManagers": [
         "github-actions"
       ],
       "separateMajorMinor": false,
-      "groupName": "ci"
+      "groupName": "ci",
+      "automerge": false
     },
     {
       "matchUpdateTypes": [
