@@ -26,14 +26,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 'use strict';
 const governify = require('governify-commons');
 const logger = governify.getLogger().tag('metric-calculator');
-const Promise = require('bluebird');
 const JSONStream = require('JSONStream');
 
 const utils = require('../../utils');
 
 const Query = utils.Query;
-const promiseErrorHandler = utils.errors.promiseErrorHandler;
-
 /**
  * Metric calculator module.
  * @module metricCalculator
@@ -80,7 +77,7 @@ async function processMetric(agreement, metricId, metricQuery) {
     }
 
     if (collector.type === 'PPINOT-V1') {
-      return await processPpinotV1Metric(metric, agreement, collectorQuery, collector, metricId);
+      return await processPpinotV1Metric(metric, agreement, collectorQuery, collector, metricId, metricQuery);
     }
 
     logger.error(`Unsupported collector type: ${collector.type}`);
@@ -102,7 +99,6 @@ async function processPostGetV1Metric(metric, agreement, scope, collectorQuery, 
       method: 'POST',
       data: { config: collector.config, metric: metric.measure },
     });
-
     const collectorResponse = requestMetric.data;
     const monthMetrics = await getComputationV2(
       collector.infrastructurePath,
@@ -118,7 +114,7 @@ async function processPostGetV1Metric(metric, agreement, scope, collectorQuery, 
   }
 }
 
-async function processPpinotV1Metric(metric, agreement, collectorQuery, collector, metricId) {
+async function processPpinotV1Metric(metric, agreement, collectorQuery, collector, metricId, metricQuery) {
   try {
     const logDefinition = getLogDefinition(metric, agreement);
     collectorQuery.logs = {
@@ -154,7 +150,7 @@ async function getComputationV2(infrastructurePath, computationURL, ttl) {
     const response = await service.get(computationURL);
 
     if (response.status === 202) {
-      logger.debug(`Computation not ready, retrying in 200ms.`);
+      logger.debug('Computation not ready, retrying in 200ms.');
       return new Promise(resolve =>
         setTimeout(() => resolve(getComputationV2(infrastructurePath, computationURL, ttl - 200)), 200)
       );
@@ -179,7 +175,7 @@ function getLogDefinition(metric, agreement) {
     if (!logId) throw new Error('Log field in metric is not well defined.');
     logDefinition = metric.log[logId];
   } else {
-    const defaultLog = Object.entries(agreement.context.definitions.logs).find(([_, log]) => log.default);
+    const defaultLog = Object.entries(agreement.context.definitions.logs).find(([, log]) => log.default);
     if (!defaultLog) throw new Error('No default log defined in agreement.');
     [logId, logDefinition] = defaultLog;
   }
@@ -200,8 +196,6 @@ function processMetricStates(monthMetrics, metric, logs, metricId) {
     return metricState;
   });
 
-  logger.debug(`Processed metric ${metricId}: \n ${JSON.stringify(compositeResponse, null, 2)}`);
-
   return {metricId: metricId, metricValues: compositeResponse};
 }
 
@@ -221,15 +215,6 @@ function handleStreamResponse(requestStream, metric, logs, metricId) {
   });
 }
 
-class Config {
-  constructor(ptkey, schedules, holidays, overrides, measures) {
-    this.ptkey = ptkey;
-    this.schedules = schedules;
-    this.holidays = holidays;
-    this.overrides = overrides;
-    this.measures = measures;
-  }
-}
 
 class LogField {
   constructor(uri, stateUri, terminator, structure) {
