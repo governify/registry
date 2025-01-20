@@ -39,7 +39,13 @@
       ],
       "separateMajorMinor": false,
       "groupName": "ci",
-      "automerge": false
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash",
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ]
     },
     {
       "matchUpdateTypes": [
