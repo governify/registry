@@ -19,6 +19,13 @@ env:
   GHCR_IMAGE: governify/registry
   PR_ID: ${{ github.event.pull_request.number }}
   TAG: ${{ github.ref_name }}
+  NODE_ENV: ci
+  PORT: 5400
+  HTTPS_SERVER: null
+  MONGOADMIN: ci
+  MONGOPASS: ci
+  API_PREFIX: /api/v6
+  OASTLM_MODULE_DISABLED: false
 
 jobs:
   build:
@@ -35,12 +42,12 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
-
+    
     - name: Install dependencies 📦⬇️
       run: npm install
 
     - name: Start the server 🚀
-      run: npm run ci &
+      run: npm start &
       
     - name: Check server is running 🏃
       run: curl -f http://localhost:5400 || exit 1
