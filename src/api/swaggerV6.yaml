@@ -529,13 +529,28 @@ paths:
     get:
       tags:
         - guarantees-states
-      description: XXX
+      description: The endpoint `/states/{agreementId}/guarantees` retrieves the state of all guarantees for a specific agreement identified by agreementId. It processes the guarantees either in parallel or sequentially, depending on the configuration.
       parameters:
         - name: agreementId
           in: path
           description: Agreement identifier.
           required: true
           type: string
+        - name: from
+          in: query
+          description: Start date of the period.
+          required: true
+          type: string
+        - name: to
+          in: query
+          description: End date of the period.
+          required: false
+          type: string
+        - name: newPeriodsFromGuarantees
+          in: query
+          description: Flag to indicate if new periods should be fetched from guarantees.
+          required: false
+          type: boolean
       responses:
         '200':
           description: Success
