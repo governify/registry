@@ -67,3 +67,6 @@ dns:
   bluejay: '.bluejay.governify.io'
   galibo: '.galibo.governify.io'
   default: bluejay
+status-backend:
+  default: 'standard'
+  standard: 'http://status-backend:3001'

@@ -36,6 +36,7 @@ const db = require('../../../../database');
 
 const gUtils = require('./gUtils.js');
 const utils = require('../../../../utils');
+const { runWithToken } = require('../../../../utils/').context;
 
 const Query = utils.Query;
 const controllerErrorHandler = utils.errors.controllerErrorHandler;
@@ -106,6 +107,9 @@ async function _guaranteesGET(req, res) {
   const { from, to, lastPeriod = 'true', newPeriodsFromGuarantees = 'true', forceUpdate } = req.query;
   const lastPeriodFlag = lastPeriod === 'true';
   const newPeriodsFlag = newPeriodsFromGuarantees === 'true';
+  const token = req.cookies?.accessToken ?? req.headers['x-access-token'];
+
+  logger.debug(`Access token: ${token}`);
 
   logger.info(`New request to GET guarantees - With new periods from guarantees: ${newPeriodsFlag}`);
 
@@ -121,19 +125,21 @@ async function _guaranteesGET(req, res) {
     logger.info('### NO Streaming mode ###');
   }
 
-  try {
-    const manager = await stateManager({ id: agreementId });
-    logger.info('Getting state of guarantees...');
+  runWithToken(token, async () => {
+    try {
+      const manager = await stateManager({ id: agreementId });
+      logger.info('Getting state of guarantees...');
 
-    if (config.parallelProcess.guarantees) {
-      await processGuaranteesInParallel(manager, req, res, result, forceUpdate === 'true');
-    } else {
-      await processGuaranteesSequentially(manager, res, result, lastPeriodFlag, newPeriodsFlag, forceUpdate === 'true', from, to);
+      if (config.parallelProcess.guarantees) {
+        await processGuaranteesInParallel(manager, req, res, result, forceUpdate === 'true');
+      } else {
+        await processGuaranteesSequentially(manager, res, result, lastPeriodFlag, newPeriodsFlag, forceUpdate === 'true', from, to);
+      }
+    } catch (err) {
+      logger.error(`(guarantee controller) ${JSON.stringify(err.message)}`);
+      res.status(err.code || 500).json({ message: err.message });
     }
-  } catch (err) {
-    logger.error(`(guarantee controller) ${JSON.stringify(err.message)}`);
-    res.status(err.code || 500).json({ message: err.message });
-  }
+  });
 }
 
 async function processGuaranteesInParallel(manager, req, res, result, forceUpdate) {

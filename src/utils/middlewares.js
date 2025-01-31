@@ -30,12 +30,6 @@ const config = governify.configurator.getConfig('main');
 const logger = governify.getLogger().tag('state-middleware');
 const ErrorModel = require('../errors/index.js').errorModel;
 
-/**
- * Swagger module.
- * @module utils.middlewares
- * @see module:utils
- * @requires config
- * */
 module.exports = {
   stateInProgress: _stateInProgress
 };
