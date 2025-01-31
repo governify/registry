@@ -27,8 +27,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 const governify = require('governify-commons');
 const logger = governify.getLogger().tag('metric-calculator');
 const JSONStream = require('JSONStream');
-
 const utils = require('../../utils');
+const { getToken } = utils.context;
 
 const Query = utils.Query;
 /**
@@ -71,8 +71,7 @@ async function processMetric(agreement, metricId, metricQuery) {
       logger.error('Collector type GET-V1 is not supported in this version.');
       return {};
     }
-
-    if (collector.type === 'POST-GET-V1') {
+    if (collector.type.startsWith('POST-GET-V1')) {
       return await processPostGetV1Metric(metric, agreement, scope, collectorQuery, collector, metricId);
     }
 
@@ -93,17 +92,21 @@ async function processPostGetV1Metric(metric, agreement, scope, collectorQuery, 
     metric.measure.scope = Object.keys(scope).length > 0 ? scope : collectorQuery.scope;
     metric.measure.window = collectorQuery.window;
 
+    const cookie = getToken();
+    const headers = cookie ? { Cookie: `accessToken=${cookie}` } : {};
+
     const service = governify.infrastructure.getService(collector.infrastructurePath);
-    const requestMetric = await service.request({
-      url: collector.endpoint,
-      method: 'POST',
-      data: { config: collector.config, metric: metric.measure },
-    });
+
+    const requestMetric = await service.post(collector.endpoint, { 
+      config: collector.config, 
+      metric: metric.measure 
+    }, { headers });
+
     const collectorResponse = requestMetric.data;
     const monthMetrics = await getComputationV2(
       collector.infrastructurePath,
       `/${collectorResponse.computation.replace(/^\//, '')}`,
-      60000
+      60000, headers
     );
 
     return processMetricStates(monthMetrics, metric, agreement.context.definitions.logs, metricId);
@@ -141,18 +144,18 @@ async function processPpinotV1Metric(metric, agreement, collectorQuery, collecto
   }
 }
 
-async function getComputationV2(infrastructurePath, computationURL, ttl) {
+async function getComputationV2(infrastructurePath, computationURL, ttl, headers) {
   if (ttl < 0) throw new Error('Retries time exceeded TTL.');
 
   logger.debug(`Requesting computation to ${computationURL} in ${infrastructurePath}`);
   const service = governify.infrastructure.getService(infrastructurePath);
   try {
-    const response = await service.get(computationURL);
+    const response = await service.get(computationURL, { headers });
 
     if (response.status === 202) {
       logger.debug('Computation not ready, retrying in 200ms.');
       return new Promise(resolve =>
-        setTimeout(() => resolve(getComputationV2(infrastructurePath, computationURL, ttl - 200)), 200)
+        setTimeout(() => resolve(getComputationV2(infrastructurePath, computationURL, ttl - 200, headers)), 200)
       );
     }
 

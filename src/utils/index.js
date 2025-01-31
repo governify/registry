@@ -78,7 +78,8 @@ module.exports = {
      * @see module:utils.middlewares
      * */
   middlewares: require('./middlewares.js'),
-  containsObject: _containsObject
+  containsObject: _containsObject,
+  context: require('./context.js'),
 
 };
 
