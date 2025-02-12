@@ -1,6 +1,6 @@
 database:
-  host: localhost
-  port: 5010  
+  host: mongo-registry
+  port: 27017  
   name: registry
 email:
   defaultMailFrom: '"ISA-Group" <no-reply@isa.us.es>'
