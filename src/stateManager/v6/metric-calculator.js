@@ -92,6 +92,10 @@ async function processPostGetV1Metric(metric, agreement, scope, collectorQuery, 
     metric.measure.scope = Object.keys(scope).length > 0 ? scope : collectorQuery.scope;
     metric.measure.window = collectorQuery.window;
 
+    if (Object.keys(collectorQuery.parameters).length > 0) {
+      metric.measure.params = { ...metric.measure.params, ...collectorQuery.parameters };
+      // If the agreement include an "ofElement" parameter, it should be added to the request
+    }
     const cookie = getToken();
     const headers = cookie ? { Cookie: `accessToken=${cookie}` } : {};
 
