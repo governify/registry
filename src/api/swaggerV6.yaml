@@ -199,33 +199,74 @@ paths:
   /agreements/{agreementId}:
     get:
       tags:
-        - agreement-registry
+      - agreement-registry
       summary: Get an agreement by ID
       parameters:
-        - name: agreementId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: agreementId
+        in: path
+        required: true
+        schema:
+        type: string
       responses:
-        '200':
-          description: Successful response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Agreement'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorModel'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorModel'
+      '200':
+        description: Successful response
+        content:
+        application/json:
+          schema:
+          $ref: '#/components/schemas/Agreement'
+      '404':
+        description: Not found
+        content:
+        application/json:
+          schema:
+          $ref: '#/components/schemas/ErrorModel'
+      '500':
+        description: Internal Server Error
+        content:
+        application/json:
+          schema:
+          $ref: '#/components/schemas/ErrorModel'
+    put:
+      tags:
+      - agreement-registry
+      summary: Update an agreement by ID
+      parameters:
+      - name: agreementId
+        in: path
+        required: true
+        schema:
+        type: string
+      requestBody:
+      required: true
+      content:
+        application/json:
+        schema:
+          $ref: '#/components/schemas/Agreement'
+      responses:
+      '200':
+        description: Agreement updated successfully
+        content:
+        application/json:
+          schema:
+          $ref: '#/components/schemas/Agreement'
+      '400':
+        description: Bad request
+        content:
+        application/json:
+          schema:
+          $ref: '#/components/schemas/ErrorModel'
+      '404':
+        description: Not found
+        content:
+        application/json:
+          schema:
+          $ref: '#/components/schemas/ErrorModel'
+      '500':
+        description: Internal Server Error
+        content:
+        application/json:
+          schema:
+          $ref: '#/components/schemas/ErrorModel'
     
     delete:
       tags:

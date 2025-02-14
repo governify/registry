@@ -51,7 +51,8 @@ module.exports = {
   agreementsDELETE: _agreementsDELETE,
   agreementsGET: _agreementsGET,
   agreementIdGET: _agreementIdGET,
-  agreementIdDELETE: _agreementIdDELETE
+  agreementIdDELETE: _agreementIdDELETE,
+  agreementIdPUT: _agreementIdPUT
 };
 
 /**
@@ -193,6 +194,37 @@ async function _agreementIdDELETE (req, res) {
     }
     logger.info('Agreement deleted');
     res.sendStatus(200);
+  } catch (err) {
+    logger.error(err.toString());
+    res.status(500).json(new ErrorModel(500, err));
+  }
+}
+
+/**
+ * Update an agreement by agreement ID.
+ * @param {Object} args {agreement: String}
+ * @param {Object} res response
+ * @param {Object} next next function
+ * @alias module:agreement.agreementIdPUT
+ * */
+async function _agreementIdPUT(req, res) {
+  logger.info('New request to UPDATE agreement');
+  const { agreementId } = req.params;
+
+  try {
+    const agreement = await db.models.AgreementModel.findOneAndUpdate(
+      { id: agreementId },
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    if (!agreement) {
+      logger.warn('There is no agreement with id: ' + agreementId);
+      return res.status(404).json(new ErrorModel(404, 'There is no agreement with id: ' + agreementId));
+    }
+
+    logger.info('Agreement updated');
+    res.status(200).json(agreement);
   } catch (err) {
     logger.error(err.toString());
     res.status(500).json(new ErrorModel(500, err));
