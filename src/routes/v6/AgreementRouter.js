@@ -34,6 +34,7 @@ router.delete('/', agreements.agreementsDELETE);
 router.post('/', agreements.agreementsPOST);
 
 router.get('/:agreementId', agreements.agreementIdGET);
+router.put('/:agreementId', agreements.agreementIdPUT);
 router.delete('/:agreementId', agreements.agreementIdDELETE);
 
 module.exports = router;
