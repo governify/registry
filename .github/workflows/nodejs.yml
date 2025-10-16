@@ -118,7 +118,7 @@ jobs:
   buildProdAndRelease:
     name: Release, build and push to dockerhub using tag version
     if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push'}}
-    needs: e2eMain
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2    
