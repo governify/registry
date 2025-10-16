@@ -1,7 +1,7 @@
 {
   "name": "governify-registry",
   "buildOn": "2018-04-18",
-  "version": "3.8.0",
+  "version": "3.9.0",
   "description": "Central repository for agreements",
   "homepage": "https://github.com/isa-group/governify-registry",
   "main": "index.js",

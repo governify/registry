@@ -1,3 +1,17 @@
+# [3.9.0](https://github.com/governify/registry/compare/v3.8.0...v3.9.0) (2025-10-16)
+
+
+### Bug Fixes
+
+* update job dependency from e2eMain to test in nodejs.yml ([c5bc184](https://github.com/governify/registry/commit/c5bc184dcc3679e6b721d6dc746a8198d761c45e))
+
+
+### Features
+
+* put agreements ([37464b5](https://github.com/governify/registry/commit/37464b5652be9cd322d01b1e8637984e123661de))
+
+
+
 # [3.8.0](https://github.com/governify/registry/compare/v3.7.0...v3.8.0) (2024-01-22)
 
 
