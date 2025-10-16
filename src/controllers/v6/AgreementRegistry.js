@@ -42,6 +42,7 @@ module.exports = {
 
   agreementsAgreementGET: _agreementsAgreementGET,
   agreementsAgreementDELETE: _agreementsAgreementDELETE,
+  agreementsAgreementPUT: _agreementsAgreementPUT,
 
   agreementsAgreementTermsGuaranteesGET: _agreementsAgreementTermsGuaranteesGET,
   agreementsAgreementTermsGuaranteesGuaranteeGET: _agreementsAgreementTermsGuaranteesGuaranteeGET
@@ -90,6 +91,10 @@ function _agreementsAgreementDELETE (req, res, next) {
  * */
 function _agreementsAgreementGET (req, res, next) {
   agreements.agreementIdGET(req.swagger.params, res, next);
+}
+
+function _agreementsAgreementPUT (req, res, next) {
+  agreements.agreementsAgreementPUT(req.swagger.params, res, next);
 }
 
 /**

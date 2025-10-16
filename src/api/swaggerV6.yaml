@@ -258,6 +258,31 @@ paths:
           schema:
             $ref: '#/definitions/error_model'
       x-swagger-router-controller: AgreementRegistry
+    put:
+      tags:
+        - agreement-registry
+      description: Update an existing agreement
+      operationId: agreementsAgreementPUT
+      parameters:
+        - name: agreement
+          in: path
+          description: XXX
+          required: true
+          type: string
+        - name: agreementBody
+          in: body
+          description: XXX
+          required: true
+          schema:
+            $ref: '#/definitions/agreement'
+      responses:
+        '200':
+          description: Success
+        '400':
+          description: Bad request
+          schema:
+            $ref: '#/definitions/error_model'
+      x-swagger-router-controller: AgreementRegistry
   /states:
     get:
       tags:

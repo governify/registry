@@ -53,6 +53,7 @@ module.exports = {
   agreementsGET: _agreementsGET,
   agreementIdGET: _agreementIdGET,
   agreementIdDELETE: _agreementIdDELETE,
+  agreementsAgreementPUT: _agreementsAgreementPUT,
   agreementsAgreementTermsGuaranteesGET: _agreementsAgreementTermsGuaranteesGET,
   agreementsAgreementTermsGuaranteesGuaranteeGET: _agreementsAgreementTermsGuaranteesGuaranteeGET
 };
@@ -201,6 +202,42 @@ function _agreementIdDELETE (args, res) {
   } else {
     res.sendStatus(400);
     logger.warn("Can't delete agreement with id " + agreementId);
+  }
+}
+
+function _agreementsAgreementPUT (args, res) {
+  logger.info('New request to UPDATE agreement');
+  // Use correct parameter names from Swagger
+  const agreementId = args.agreement?.value;
+  // Accept both 'agreementBody' and fallback to 'body' for backward compatibility
+  const agreementBody = args.agreementBody?.value || args.body?.value;
+  if (agreementId && agreementBody) {
+    $RefParser.dereference(agreementBody, function (err, schema) {
+      if (err) {
+        logger.error(err.toString());
+        res.status(500).json(new ErrorModel(500, err));
+      } else {
+        const AgreementModel = db.models.AgreementModel;
+        AgreementModel.findOneAndUpdate({
+          id: agreementId
+        }, schema, { new: true }, function (err, agreement) {
+          if (err) {
+            logger.error('Mongo error updating agreement: ' + err.toString());
+            res.status(500).json(new ErrorModel(500, err));
+          } else {
+            if (!agreement) {
+              logger.warn('There is no agreement with id: ' + agreementId);
+              return res.status(404).json(new ErrorModel(404, 'There is no agreement with id: ' + agreementId));
+            }
+            logger.info('Agreement updated successfully!');
+            res.status(200).json(agreement);
+          }
+        });
+      }
+    });
+  } else {
+    res.sendStatus(400);
+    logger.warn("Can't update agreement: missing id or body");
   }
 }
 
