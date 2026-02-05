@@ -18,7 +18,7 @@
   "private": true,
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "11.7.3",
-    "@oas-tools/oas-telemetry": "0.5.1",
+    "@oas-tools/oas-telemetry": "0.7.1",
     "ajv": "8.17.1",
     "bluebird": "3.7.2",
     "compression": "1.7.5",
